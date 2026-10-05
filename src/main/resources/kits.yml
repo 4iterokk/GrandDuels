@@ -1,0 +1,103 @@
+# Kits. Each item is either a structured definition (below) or a lossless serialized item written by /duels savekit:
+#   { material: DIAMOND_SWORD, amount: 1, data: <base64 produced by ItemStack#serializeAsBytes> }  (data wins when present)
+#
+# Structured item keys:
+#   material, amount, name, lore, enchantments {<minecraft key>: level}, unbreakable, damage,
+#   potion {type: <potion type>, effects: [{type, duration, amplifier}]},
+#   trim {pattern, material},
+#   attribute-modifiers: [{attribute, amount, operation: ADD_NUMBER|ADD_SCALAR|MULTIPLY_SCALAR_1, slot: mainhand|offhand|head|chest|legs|feet|any}]
+#   components (Paper DataComponentTypes): max-stack-size, max-damage,
+#       food {nutrition, saturation, can-always-eat}, consumable {consume-seconds}
+#
+# Slots: items 0-8 hotbar, 9-35 inventory. armor: helmet/chestplate/leggings/boots. offhand: single item.
+# Status effects: effects: [{type: speed, duration: 999999, amplifier: 0}]  (duration -1 = infinite)
+
+kits:
+  nodebuff:
+    display-name: "&#ff5555&lNoDebuff"
+    icon: SPLASH_POTION
+    description:
+      - "&7Classic potion PvP."
+      - "&7Diamond gear, pearls and healing."
+    effects:
+      - { type: speed, duration: -1, amplifier: 0 }
+    armor:
+      helmet: { material: DIAMOND_HELMET, enchantments: { protection: 4, unbreaking: 3 } }
+      chestplate: { material: DIAMOND_CHESTPLATE, enchantments: { protection: 4, unbreaking: 3 } }
+      leggings: { material: DIAMOND_LEGGINGS, enchantments: { protection: 4, unbreaking: 3 } }
+      boots: { material: DIAMOND_BOOTS, enchantments: { protection: 4, unbreaking: 3, feather_falling: 4 } }
+    items:
+      0: { material: DIAMOND_SWORD, enchantments: { sharpness: 5, unbreaking: 3 } }
+      1: { material: ENDER_PEARL, amount: 16 }
+      2: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      3: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      4: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      5: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      6: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      7: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      8: { material: GOLDEN_APPLE, amount: 8 }
+      9: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      10: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      11: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      12: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      13: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      14: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      15: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      16: { material: SPLASH_POTION, potion: { type: strong_healing } }
+      17: { material: SPLASH_POTION, potion: { type: strong_healing } }
+
+  mace:
+    display-name: "&#55ffff&lMace Smash"
+    icon: MACE
+    description:
+      - "&7Wind charges and a heavy mace."
+      - "&7Launch yourself and smash down!"
+    armor:
+      helmet:
+        material: NETHERITE_HELMET
+        enchantments: { protection: 4, unbreaking: 3 }
+        trim: { pattern: sentry, material: diamond }
+      chestplate:
+        material: NETHERITE_CHESTPLATE
+        enchantments: { protection: 4, unbreaking: 3 }
+        trim: { pattern: sentry, material: diamond }
+      leggings:
+        material: NETHERITE_LEGGINGS
+        enchantments: { protection: 4, unbreaking: 3 }
+        trim: { pattern: sentry, material: diamond }
+      boots:
+        material: NETHERITE_BOOTS
+        enchantments: { protection: 4, unbreaking: 3, feather_falling: 4 }
+        trim: { pattern: sentry, material: diamond }
+    items:
+      0:
+        material: MACE
+        enchantments: { density: 5, breach: 4, unbreaking: 3 }
+        attribute-modifiers:
+          - { attribute: attack_speed, amount: 0.5, operation: ADD_NUMBER, slot: mainhand }
+      1: { material: WIND_CHARGE, amount: 64 }
+      2:
+        material: GOLDEN_APPLE
+        amount: 6
+        components:
+          food: { nutrition: 6, saturation: 12.0, can-always-eat: true }
+          consumable: { consume-seconds: 0.8 }
+      3: { material: ENDER_PEARL, amount: 8 }
+      4: { material: COBWEB, amount: 8 }
+
+  gapple:
+    display-name: "&#ffaa00&lGapple"
+    icon: GOLDEN_APPLE
+    description:
+      - "&7Sword, shield and golden apples."
+    armor:
+      helmet: { material: DIAMOND_HELMET, enchantments: { protection: 3, unbreaking: 3 } }
+      chestplate: { material: DIAMOND_CHESTPLATE, enchantments: { protection: 3, unbreaking: 3 } }
+      leggings: { material: DIAMOND_LEGGINGS, enchantments: { protection: 3, unbreaking: 3 } }
+      boots: { material: DIAMOND_BOOTS, enchantments: { protection: 3, unbreaking: 3 } }
+    offhand: { material: SHIELD }
+    items:
+      0: { material: DIAMOND_SWORD, enchantments: { sharpness: 4, unbreaking: 3 } }
+      1: { material: ENCHANTED_GOLDEN_APPLE, amount: 4 }
+      2: { material: GOLDEN_APPLE, amount: 16 }
+      3: { material: ENDER_PEARL, amount: 4 }

@@ -1,0 +1,157 @@
+# GrandDuels messages. Supports &a legacy codes, &#RRGGBB / <#RRGGBB> hex and <gradient:#aaaaaa:#bbbbbb>text</gradient>.
+# Placeholders look like {player}. Placeholder values are plain text from the plugin.
+
+prefix: "&8[&#ff5555Grand&#ffaa00Duels&8] &7"
+
+general:
+  player-only: "&cThis command can only be used by players."
+  no-permission: "&cYou do not have permission to do that."
+  unknown-subcommand: "&cUnknown subcommand. Available: &f{commands}"
+  player-not-found: "&cPlayer &f{player} &cis not online."
+  invalid-name: "&cNames may only contain letters, numbers, '_' and '-' (max 32 characters)."
+
+duels:
+  usage: "&7Usage: &f/duel <player> &8| &f/duel accept|deny [player] &8| &f/duel cancel &8| &f/duel stats [player]"
+  cannot-self: "&cYou cannot duel yourself."
+  self-busy: "&cYou are already in a duel."
+  target-busy: "&f{player} &cis already in a duel."
+  player-busy: "&cOne of the players is already in a duel."
+  already-sent: "&cYou already have a pending request. Use &f/duel cancel &cfirst."
+  request-sent: "&7Duel request sent to &f{target} &7(kit &f{kit}&7). It expires in &f{seconds}s&7."
+  request-received: "&f{sender} &7challenged you to a duel! Kit: &f{kit} &8| &7Gapples: &f{gapples} &8| &7Custom cooldowns: &f{cooldowns} &8(&7{seconds}s&8)"
+  request-accept-button: "&a&l[ACCEPT]"
+  request-deny-button: "&c&l[DENY]"
+  request-accept-hover: "&7Click to accept the duel"
+  request-deny-hover: "&7Click to deny the duel"
+  request-expired: "&7Your duel request to &f{target} &7expired."
+  request-expired-target: "&7The duel request from &f{sender} &7expired."
+  request-cancelled-target: "&f{sender} &7cancelled the duel request."
+  cancelled: "&7You cancelled your duel request to &f{target}&7."
+  cancel-none: "&cYou have no pending duel request."
+  none-pending: "&cYou have no pending duel requests."
+  multiple-pending: "&cMultiple requests pending. Specify one: &f{players}"
+  request-not-found: "&cNo pending request from that player."
+  declined: "&f{player} &7declined your duel request."
+  decline-confirm: "&7You declined the duel request from &f{player}&7."
+  starting: "&7Duel against &f{opponent} &7on arena &f{arena} &7with kit &f{kit}&7."
+  opponent-left: "&f{opponent} &7left the duel."
+  summary: "&7You dealt &f{damage} &7damage, your opponent dealt &f{opponent_damage}&7."
+  ongoing: "&7vs &f{opponent} &8| &c{health}\u2764 &8| &f{time}"
+  command-blocked: "&cYou cannot use commands during a duel."
+  gapples-disabled: "&cGolden apples are disabled in this duel."
+  item-blocked: "&cYou cannot drop or pick up items during a duel."
+  elytra-blocked: "&cElytra are disabled during duels."
+  riptide-blocked: "&cRiptide is disabled during duels."
+  start-failed: "&cThe duel could not be started. Nothing was changed."
+  recovered: "&7Your inventory and location were restored after an interrupted duel."
+  state-on: "&aON"
+  state-off: "&cOFF"
+
+titles:
+  countdown:
+    title: "&e{seconds}"
+    subtitle: "&7Get ready!"
+  go:
+    title: "&a&lFIGHT!"
+    subtitle: ""
+  victory:
+    title: "&6&lVICTORY"
+    subtitle: "&7You defeated &f{opponent}"
+  defeat:
+    title: "&c&lDEFEAT"
+    subtitle: "&7You lost to &f{opponent}"
+  draw:
+    title: "&e&lDRAW"
+    subtitle: "&7The duel ended without a winner"
+
+cooldowns:
+  golden-apple: "&6Golden Apple &7cooldown: &f{time}s"
+  enchanted-golden-apple: "&dEnchanted Golden Apple &7cooldown: &f{time}s"
+  trident: "&bTrident &7cooldown: &f{time}s"
+  wind-charge: "&fWind Charge &7cooldown: &f{time}s"
+  ender-pearl: "&5Ender Pearl &7cooldown: &f{time}s"
+  chorus-fruit: "&dChorus Fruit &7cooldown: &f{time}s"
+
+arena:
+  usage: "&7Usage: &f/duels arena <create|delete|pos1|pos2> <name>"
+  created: "&7Arena &f{arena} &7created. Set both points with &f/duels arena pos1|pos2 {arena}&7."
+  exists: "&cAn arena named &f{arena} &calready exists."
+  deleted: "&7Arena &f{arena} &7deleted."
+  not-found: "&cArena &f{arena} &cdoes not exist."
+  in-use: "&cArena &f{arena} &cis currently in use."
+  pos1-set: "&7Point 1 of &f{arena} &7set to &f{location}&7."
+  pos2-set: "&7Point 2 of &f{arena} &7set to &f{location}&7."
+  world-mismatch: "&cBoth arena points must be in the same world."
+  none-available: "&cNo free arena is available right now."
+  outside-bounds: "&cYou cannot leave the arena."
+
+kits:
+  usage-save: "&7Usage: &f/duels savekit <id>"
+  saved: "&7Kit &f{kit} &7saved from your inventory and effects."
+  not-found: "&cKit &f{kit} &cdoes not exist."
+  none-available: "&cNo kits are configured."
+
+admin:
+  usage: "&7Usage: &f/duels <arena|reload|savekit|setlobby|forceend>"
+  reloaded: "&7Configuration reloaded. Kits: &f{kits}&7, arenas: &f{arenas}&7."
+  lobby-set: "&7Lobby location set to &f{location}&7."
+  force-usage: "&7Usage: &f/duels forceend <player>"
+  force-ended: "&7Forcibly ended the duel of &f{player}&7."
+  force-none: "&c{player} is not in a duel."
+
+gui:
+  filler: " "
+  kit-selector:
+    title: "&8Select a kit"
+    hint: "&eClick to select"
+    prev: "&7\u00ab Previous page"
+    next: "&7Next page \u00bb"
+    page: "&7Page &f{page}&7/&f{pages}"
+    close: "&cClose"
+    empty: "&cNo kits available"
+  settings:
+    title: "&8Duel settings"
+    gapples-on: "&fAllow Gapples: &aON"
+    gapples-off: "&fAllow Gapples: &cOFF"
+    gapples-lore:
+      - "&7Toggle golden apples in this duel."
+      - "&eClick to toggle"
+    cooldowns-on: "&fCustom Cooldowns: &aON"
+    cooldowns-off: "&fCustom Cooldowns: &cOFF"
+    cooldowns-lore:
+      - "&7Apply the configured item cooldowns"
+      - "&7(Gapples, Pearls, Tridents, Wind Charges...)."
+      - "&eClick to toggle"
+    send: "&a&lSend request"
+    send-lore:
+      - "&7Challenge &f{target} &7with kit &f{kit}"
+    back: "&7\u00ab Back to kits"
+    cancel: "&cCancel"
+  tags:
+    mace: "&8\u2022 &7Mace"
+    wind-charge: "&8\u2022 &7Wind Charges"
+    trident: "&8\u2022 &7Trident"
+    spear: "&8\u2022 &7Spear"
+    wolf-armor: "&8\u2022 &7Wolf Armor"
+    components: "&8\u2022 &7Data components: &f{components}"
+
+scoreboard:
+  title: "&#ff5555&lGrand&#ffaa00&lDuels"
+  lines:
+    - "&8&m                    "
+    - "&7Kit: &f{kit}"
+    - "&7Arena: &f{arena}"
+    - "&7Time: &f{time}"
+    - " "
+    - "&f{player1}: &c{health1}\u2764"
+    - "&f{player2}: &c{health2}\u2764"
+    - "&8&m                    &r"
+
+stats:
+  lines:
+    - "&8&m                         "
+    - "&6&l{player}&7's duel stats"
+    - "&7Wins: &f{wins} &8| &7Losses: &f{losses}"
+    - "&7Kills: &f{kills} &8| &7Deaths: &f{deaths} &8| &7K/D: &f{kd}"
+    - "&7Win streak: &f{streak} &8| &7Best streak: &f{best_streak}"
+    - "&8&m                         "

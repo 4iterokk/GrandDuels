@@ -1,0 +1,50 @@
+# GrandDuels configuration
+
+storage:
+  # YAML or SQLITE (changing this requires a restart)
+  type: YAML
+
+duel:
+  request-expire-seconds: 30
+  # true: /duel <player> opens the kit selector. false: the default kit is used immediately.
+  use-kit-selector: true
+  default-kit: nodebuff
+  countdown-seconds: 5
+  celebration-seconds: 5
+  # 0 disables the time limit (a timeout ends the duel as a draw)
+  max-duration-seconds: 600
+  # PREVIOUS_LOCATION or LOBBY (set the lobby with /duels setlobby)
+  return-mode: PREVIOUS_LOCATION
+  # Arena boundary = cuboid spanned by the two arena points, expanded by this many blocks
+  boundary-padding: 40.0
+  # false: blocks cannot be changed inside arenas. true: changes are allowed and rolled back after the duel.
+  building-enabled: false
+  # Blocks restored per tick during arena rollback
+  rollback-batch-size: 500
+  # Commands allowed during a duel (without the leading slash)
+  command-whitelist:
+    - "duel cancel"
+
+# Per-item consumption / usage cooldowns in seconds (0 disables)
+cooldowns:
+  golden-apple: 30
+  enchanted-golden-apple: 30
+  trident: 5
+  wind-charge: 3
+  ender-pearl: 15
+  chorus-fruit: 10
+
+rules:
+  elytra-disabled: true
+  # false: right-clicking a Riptide trident is blocked
+  riptide-enabled: false
+  block-item-drop: true
+  block-item-pickup: true
+  # Heavy attacks only: mace smash (fall distance > 1.5) and spear charge (sprinting).
+  # max-damage: 0 = vanilla. knockback-multiplier: 1.0 = vanilla.
+  mace:
+    max-damage: 0
+    knockback-multiplier: 1.0
+  spear:
+    max-damage: 0
+    knockback-multiplier: 1.0

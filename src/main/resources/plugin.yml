@@ -1,6 +1,35 @@
 name: GrandDuels
-version: '${version}'
-
+version: '${project.version}'
 main: org.chiterok.grandDuels.GrandDuels
 api-version: '1.21.11'
 load: POSTWORLD
+authors: [chiterok]
+description: Modern 1v1 dueling for Paper 1.21+ with data-component kits, PvP cooldowns and arena rollback.
+
+commands:
+  duel:
+    description: Challenge a player or manage duel requests
+    usage: /<command> <player|accept|deny|cancel|stats>
+    aliases: [1v1, challenge]
+    permission: grandduels.duel
+  duels:
+    description: GrandDuels administration
+    usage: /<command> <arena|reload|savekit|setlobby|forceend>
+    aliases: [gduels, grandduels]
+    permission: grandduels.admin
+
+permissions:
+  grandduels.duel:
+    description: Send, accept and deny duel requests
+    default: true
+  grandduels.stats:
+    description: View duel statistics
+    default: true
+  grandduels.admin:
+    description: Manage arenas, kits and plugin state
+    default: op
+    children:
+      grandduels.bypass.commands: true
+  grandduels.bypass.commands:
+    description: Use any command while inside a duel
+    default: op

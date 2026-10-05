@@ -1,57 +1,135 @@
 package org.chiterok.grandDuels.utils;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import org.bukkit.ChatColor;
 
 /**
- * Utility for translating legacy & color codes and hex color codes.
- * Supports both &#RRGGBB and <#RRGGBB> formats.
+ * Single entry point for turning configurable strings into Kyori {@link Component}s.
+ * <p>
+ * Supported syntax (can be mixed): legacy codes ({@code &a}, {@code &l}, {@code &r}),
+ * hex colors ({@code &#RRGGBB}, {@code <#RRGGBB>}) and MiniMessage tags such as
+ * {@code <gradient:#ff0000:#00ff00>text</gradient>}.
+ * <p>
+ * Placeholders are written as {@code {name}}. Placeholder values are treated as trusted plugin-side text
+ * (player names, kit names, numbers) and may themselves contain legacy/hex codes.
  */
-public class ColorUtil {
+public final class ColorUtil {
 
-    private static final Pattern HEX_PATTERN     = Pattern.compile("&#([a-fA-F0-9]{6})");
-    private static final Pattern NEW_HEX_PATTERN = Pattern.compile("<#([a-fA-F0-9]{6})>");
+    private static final MiniMessage MINI = MiniMessage.miniMessage();
+    private static final Pattern AMP_HEX = Pattern.compile("&#([A-Fa-f0-9]{6})");
+    private static final Pattern LEGACY = Pattern.compile("&([0-9a-fA-Fk-oK-OrR])");
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z0-9_.-]+)}");
 
     private ColorUtil() {}
 
-    public static String colorize(String message) {
-        if (message == null) return null;
-        message = translateNewHexColors(message);
-        message = translateHexColors(message);
-        return ChatColor.translateAlternateColorCodes('&', message);
+    public static Component colorize(String text) {
+        return colorize(text, Map.of());
     }
 
-    public static List<String> colorize(List<String> messages) {
-        return messages.stream()
-                .map(ColorUtil::colorize)
-                .collect(Collectors.toList());
+    public static Component colorize(String text, Map<String, String> placeholders) {
+        if (text == null || text.isEmpty()) return Component.empty();
+        String converted = toMiniMessage(text);
+        if (!placeholders.isEmpty()) converted = applyPlaceholders(converted, placeholders);
+        return MINI.deserialize(converted);
     }
 
-    private static String translateHexColors(String message) {
-        Matcher matcher = HEX_PATTERN.matcher(message);
-        StringBuffer buffer = new StringBuffer();
+    public static List<Component> colorize(List<String> lines) {
+        return colorize(lines, Map.of());
+    }
+
+    public static List<Component> colorize(List<String> lines, Map<String, String> placeholders) {
+        List<Component> out = new ArrayList<>(lines.size());
+        for (String line : lines) out.add(colorize(line, placeholders));
+        return out;
+    }
+
+    /** Colorizes item names/lore: italics are disabled unless the text explicitly enables them. */
+    public static Component colorizeItem(String text) {
+        return colorizeItem(text, Map.of());
+    }
+
+    public static Component colorizeItem(String text, Map<String, String> placeholders) {
+        return colorize(text, placeholders).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
+    }
+
+    public static List<Component> colorizeItem(List<String> lines) {
+        return colorizeItem(lines, Map.of());
+    }
+
+    public static List<Component> colorizeItem(List<String> lines, Map<String, String> placeholders) {
+        List<Component> out = new ArrayList<>(lines.size());
+        for (String line : lines) out.add(colorizeItem(line, placeholders));
+        return out;
+    }
+
+    public static String plain(Component component) {
+        return PlainTextComponentSerializer.plainText().serialize(component);
+    }
+
+    private static String applyPlaceholders(String text, Map<String, String> placeholders) {
+        Matcher matcher = PLACEHOLDER.matcher(text);
+        StringBuilder out = new StringBuilder();
         while (matcher.find()) {
-            String hexCode = matcher.group(1).toLowerCase();
-            StringBuilder replacement = new StringBuilder("§x");
-            for (char c : hexCode.toCharArray()) replacement.append('§').append(c);
-            matcher.appendReplacement(buffer, replacement.toString());
+            String value = placeholders.get(matcher.group(1));
+            String replacement = value == null ? matcher.group() : toMiniMessage(value);
+            matcher.appendReplacement(out, Matcher.quoteReplacement(replacement));
         }
-        return matcher.appendTail(buffer).toString();
+        matcher.appendTail(out);
+        return out.toString();
     }
 
-    private static String translateNewHexColors(String message) {
-        Matcher matcher = NEW_HEX_PATTERN.matcher(message);
-        StringBuffer buffer = new StringBuffer();
+    /** Converts legacy and {@code &#RRGGBB} syntax into MiniMessage tags. */
+    private static String toMiniMessage(String text) {
+        String withHex = AMP_HEX.matcher(text).replaceAll("<#$1>");
+        Matcher matcher = LEGACY.matcher(withHex);
+        StringBuilder out = new StringBuilder();
         while (matcher.find()) {
-            String hexCode = matcher.group(1);
-            String replacement = "§x" + hexCode.chars()
-                    .<CharSequence>mapToObj(c -> "§" + (char) c)
-                    .collect(Collectors.joining());
-            matcher.appendReplacement(buffer, replacement);
+            char code = Character.toLowerCase(matcher.group(1).charAt(0));
+            matcher.appendReplacement(out, Matcher.quoteReplacement(legacyTag(code)));
         }
-        return matcher.appendTail(buffer).toString();
+        matcher.appendTail(out);
+        return out.toString();
+    }
+
+    private static String legacyTag(char code) {
+        return switch (code) {
+            case '0' -> "<reset><black>";
+            case '1' -> "<reset><dark_blue>";
+            case '2' -> "<reset><dark_green>";
+            case '3' -> "<reset><dark_aqua>";
+            case '4' -> "<reset><dark_red>";
+            case '5' -> "<reset><dark_purple>";
+            case '6' -> "<reset><gold>";
+            case '7' -> "<reset><gray>";
+            case '8' -> "<reset><dark_gray>";
+            case '9' -> "<reset><blue>";
+            case 'a' -> "<reset><green>";
+            case 'b' -> "<reset><aqua>";
+            case 'c' -> "<reset><red>";
+            case 'd' -> "<reset><light_purple>";
+            case 'e' -> "<reset><yellow>";
+            case 'f' -> "<reset><white>";
+            case 'k' -> "<obfuscated>";
+            case 'l' -> "<bold>";
+            case 'm' -> "<strikethrough>";
+            case 'n' -> "<underlined>";
+            case 'o' -> "<italic>";
+            case 'r' -> "<reset>";
+            default -> "";
+        };
+    }
+
+    /** Lower-cases using the root locale (avoids the Turkish-i problem for registry keys). */
+    public static String key(String raw) {
+        return raw.toLowerCase(Locale.ROOT).trim();
     }
 }

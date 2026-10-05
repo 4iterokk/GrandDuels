@@ -1,0 +1,43 @@
+package org.chiterok.grandDuels.command.admin;
+
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabExecutor;
+import org.chiterok.grandDuels.GrandDuels;
+import org.chiterok.grandDuels.command.CommandRegistry;
+import org.chiterok.grandDuels.command.admin.arena.ArenaCommand;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
+
+/** {@code /duels <arena|reload|savekit|setlobby|forceend>} */
+public final class DuelsCommand implements TabExecutor {
+
+    private final GrandDuels plugin;
+    private final CommandRegistry registry;
+
+    public DuelsCommand(GrandDuels plugin) {
+        this.plugin = plugin;
+        this.registry = new CommandRegistry(plugin)
+                .register(new ArenaCommand(plugin))
+                .register(new Reload(plugin))
+                .register(new SaveKit(plugin))
+                .register(new SetLobby(plugin))
+                .register(new ForceEnd(plugin));
+    }
+
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label,
+                             @NotNull String[] args) {
+        if (!registry.execute(sender, args)) {
+            plugin.messages().send(sender, "admin.usage");
+        }
+        return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias,
+                                      @NotNull String[] args) {
+        return registry.complete(sender, args);
+    }
+}

@@ -1,4 +1,73 @@
 package org.chiterok.grandDuels.command.admin.arena;
 
-public class PosTwo {
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.chiterok.grandDuels.GrandDuels;
+import org.chiterok.grandDuels.arena.Arena;
+import org.chiterok.grandDuels.arena.ArenaState;
+import org.chiterok.grandDuels.command.CommandRegistry;
+import org.chiterok.grandDuels.command.SubCommand;
+import org.chiterok.grandDuels.utils.StoredLocation;
+
+import java.util.List;
+
+/** {@code /duels arena pos2|setspawn2 <name>} - sets the second spawn point to the executor's location. */
+public final class PosTwo implements SubCommand {
+
+    private final GrandDuels plugin;
+
+    public PosTwo(GrandDuels plugin) {
+        this.plugin = plugin;
+    }
+
+    @Override
+    public String name() {
+        return "pos2";
+    }
+
+    @Override
+    public List<String> aliases() {
+        return List.of("setspawn2");
+    }
+
+    @Override
+    public String permission() {
+        return "grandduels.admin";
+    }
+
+    @Override
+    public boolean playerOnly() {
+        return true;
+    }
+
+    @Override
+    public void execute(CommandSender sender, String[] args) {
+        if (args.length != 1) {
+            plugin.messages().send(sender, "arena.usage");
+            return;
+        }
+        Arena arena = plugin.arenas().get(args[0]);
+        if (arena == null) {
+            plugin.messages().send(sender, "arena.not-found", "arena", args[0]);
+            return;
+        }
+        if (arena.state() != ArenaState.WAITING) {
+            plugin.messages().send(sender, "arena.in-use", "arena", arena.name());
+            return;
+        }
+        StoredLocation location = StoredLocation.of(((Player) sender).getLocation());
+        StoredLocation other = arena.pos1();
+        if (other != null && !other.world().equals(location.world())) {
+            plugin.messages().send(sender, "arena.world-mismatch");
+            return;
+        }
+        arena.setPos2(location);
+        plugin.arenas().save();
+        plugin.messages().send(sender, "arena.pos2-set", "arena", arena.name(), "location", location.pretty());
+    }
+
+    @Override
+    public List<String> tabComplete(CommandSender sender, String[] args) {
+        return args.length == 1 ? CommandRegistry.filter(plugin.arenas().names(), args[0]) : List.of();
+    }
 }
