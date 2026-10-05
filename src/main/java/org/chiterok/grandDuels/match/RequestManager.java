@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 import org.chiterok.grandDuels.GrandDuels;
 import org.chiterok.grandDuels.config.Messages;
+import org.chiterok.grandDuels.cooldown.CooldownType;
 import org.chiterok.grandDuels.kit.Kit;
 
 import java.util.ArrayList;
@@ -58,7 +59,26 @@ public final class RequestManager {
         Component deny = m.get("duels.request-deny-button")
                 .clickEvent(ClickEvent.runCommand("/duel deny " + request.senderName()))
                 .hoverEvent(HoverEvent.showText(m.get("duels.request-deny-hover")));
-        return text.append(Component.newline()).append(accept).append(Component.space()).append(deny);
+        Component details = m.prefixed("duels.request-details", Messages.ph("details", describe(request.settings())));
+        return text.append(Component.newline()).append(details).append(Component.newline())
+                .append(accept).append(Component.space()).append(deny);
+    }
+
+    /** Human readable summary of cooldowns and bans, e.g. "Ender Pearl 15s, Wind Charge banned". */
+    private String describe(MatchSettings settings) {
+        List<String> parts = new ArrayList<>();
+        for (CooldownType type : CooldownType.values()) {
+            String name = plugin.messages().string("cooldown-names." + type.configKey());
+            if (settings.isBanned(type)) {
+                parts.add(name + " " + plugin.messages().string("duels.banned-word"));
+            } else if (settings.customCooldowns() && settings.cooldownSeconds(type) > 0.0) {
+                double seconds = settings.cooldownSeconds(type);
+                String value = seconds == Math.rint(seconds) ? String.valueOf((long) seconds)
+                        : String.format(java.util.Locale.ROOT, "%.1f", seconds);
+                parts.add(name + " " + value + "s");
+            }
+        }
+        return parts.isEmpty() ? plugin.messages().string("duels.no-rules-word") : String.join(", ", parts);
     }
 
     private String plainState(boolean on) {

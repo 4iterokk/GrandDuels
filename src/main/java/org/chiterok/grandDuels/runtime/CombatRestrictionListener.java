@@ -91,7 +91,7 @@ public final class CombatRestrictionListener implements Listener {
     public void onTeleport(PlayerTeleportEvent event) {
         PlayerTeleportEvent.TeleportCause cause = event.getCause();
         if (cause != PlayerTeleportEvent.TeleportCause.ENDER_PEARL
-                && cause != PlayerTeleportEvent.TeleportCause.CONSUMABLE_EFFECT) return;
+                && cause != PlayerTeleportEvent.TeleportCause.CHORUS_FRUIT) return;
         Player player = event.getPlayer();
         Match match = plugin.matches().of(player);
         if (match == null || isInside(match, event.getTo())) return;

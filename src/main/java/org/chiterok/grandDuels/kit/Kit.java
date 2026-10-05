@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
+import org.chiterok.grandDuels.cooldown.CooldownType;
 import org.chiterok.grandDuels.match.MatchSettings;
 import org.jetbrains.annotations.Nullable;
 
@@ -49,9 +50,11 @@ public record Kit(String id, String displayName, ItemStack icon, List<String> de
     }
 
     private static boolean isAllowed(ItemStack item, MatchSettings settings) {
-        if (settings.allowGapples()) return true;
         Material type = item.getType();
-        return type != Material.GOLDEN_APPLE && type != Material.ENCHANTED_GOLDEN_APPLE;
+        for (CooldownType banned : settings.banned()) {
+            if (banned.material() == type) return false;
+        }
+        return true;
     }
 
     /** Keys for {@code gui.tags.*} describing modern-combat items contained in the kit. */

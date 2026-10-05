@@ -33,7 +33,7 @@ public final class DuelService {
         }
         Kit kit = plugin.kits().get(plugin.settings().duel().defaultKit());
         if (kit == null) kit = plugin.kits().all().iterator().next();
-        sendRequest(sender, target, kit, MatchSettings.defaults());
+        sendRequest(sender, target, kit, plugin.preferences().get(sender.getUniqueId()).toSettings(plugin.settings()));
     }
 
     public void sendRequest(Player sender, Player target, Kit kit, MatchSettings settings) {
@@ -46,6 +46,14 @@ public final class DuelService {
     private boolean validateParticipants(Player sender, Player target) {
         if (sender.getUniqueId().equals(target.getUniqueId())) {
             plugin.messages().send(sender, "duels.cannot-self");
+            return false;
+        }
+        if (plugin.kitEdits().isEditing(sender.getUniqueId())) {
+            plugin.messages().send(sender, "kits.editing-busy");
+            return false;
+        }
+        if (plugin.kitEdits().isEditing(target.getUniqueId())) {
+            plugin.messages().send(sender, "duels.target-busy", "player", target.getName());
             return false;
         }
         if (plugin.matches().isInMatch(sender.getUniqueId())) {

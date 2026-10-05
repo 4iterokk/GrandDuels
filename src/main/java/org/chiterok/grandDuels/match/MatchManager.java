@@ -43,7 +43,10 @@ public final class MatchManager {
     }
 
     public StartResult start(Player first, Player second, Kit kit, MatchSettings settings) {
-        if (isInMatch(first.getUniqueId()) || isInMatch(second.getUniqueId())) return StartResult.PLAYER_BUSY;
+        if (isInMatch(first.getUniqueId()) || isInMatch(second.getUniqueId())
+                || plugin.kitEdits().isEditing(first.getUniqueId()) || plugin.kitEdits().isEditing(second.getUniqueId())) {
+            return StartResult.PLAYER_BUSY;
+        }
 
         Arena arena = plugin.arenas().acquireFree(plugin.settings().duel().boundaryPadding());
         if (arena == null) return StartResult.NO_ARENA;
@@ -87,7 +90,7 @@ public final class MatchManager {
         PlayerSnapshot snapshot = plugin.snapshots().load(id);
         if (snapshot == null) return false;
         plugin.cooldowns().clear(player);
-        snapshot.restore(player, snapshot.location());
+        snapshot.restore(player, snapshot.location(), true);
         plugin.snapshots().delete(id);
         return true;
     }

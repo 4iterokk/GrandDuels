@@ -134,7 +134,8 @@ public final class KitManager {
     /** Overwrites items/armor/offhand/effects of kit {@code id} (creating it if needed) from the player's loadout. */
     public void save(String id, Player player) {
         FileConfiguration yaml = plugin.configs().kits();
-        ConfigurationSection kit = yaml.getConfigurationSection("kits." + id);
+        String existingKey = findKey(id);
+        ConfigurationSection kit = existingKey == null ? null : yaml.getConfigurationSection("kits." + existingKey);
         if (kit == null) {
             kit = yaml.createSection("kits." + id);
             kit.set("display-name", "&f" + id);
@@ -166,6 +167,26 @@ public final class KitManager {
 
         plugin.configs().kitsFile().save();
         reload();
+    }
+
+    /** Key of the kit section in kits.yml (kit ids are case-insensitive), or {@code null}. */
+    private @Nullable String findKey(String id) {
+        ConfigurationSection root = plugin.configs().kits().getConfigurationSection("kits");
+        if (root == null) return null;
+        for (String key : root.getKeys(false)) {
+            if (key.equalsIgnoreCase(id)) return key;
+        }
+        return null;
+    }
+
+    /** Removes the kit from kits.yml. @return false if it does not exist. */
+    public boolean delete(String id) {
+        String key = findKey(id);
+        if (key == null) return false;
+        plugin.configs().kits().set("kits." + key, null);
+        plugin.configs().kitsFile().save();
+        reload();
+        return true;
     }
 
     private void writeArmor(ConfigurationSection kit, String slot, @Nullable ItemStack item) {

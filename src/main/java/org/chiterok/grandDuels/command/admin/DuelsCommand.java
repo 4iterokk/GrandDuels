@@ -6,11 +6,12 @@ import org.bukkit.command.TabExecutor;
 import org.chiterok.grandDuels.GrandDuels;
 import org.chiterok.grandDuels.command.CommandRegistry;
 import org.chiterok.grandDuels.command.admin.arena.ArenaCommand;
+import org.chiterok.grandDuels.command.admin.kit.KitCommand;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-/** {@code /duels <arena|reload|savekit|setlobby|forceend>} */
+/** {@code /duels <arena|kit|reload|setlobby|forceend>} */
 public final class DuelsCommand implements TabExecutor {
 
     private final GrandDuels plugin;
@@ -21,7 +22,7 @@ public final class DuelsCommand implements TabExecutor {
         this.registry = new CommandRegistry(plugin)
                 .register(new ArenaCommand(plugin))
                 .register(new Reload(plugin))
-                .register(new SaveKit(plugin))
+                .register(new KitCommand(plugin))
                 .register(new SetLobby(plugin))
                 .register(new ForceEnd(plugin));
     }

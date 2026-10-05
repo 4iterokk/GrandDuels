@@ -41,6 +41,9 @@ public final class Match {
 
     public enum Phase { COUNTDOWN, FIGHTING, ENDING, FINISHED }
 
+    /** Ticks to wait after a respawn before moving/teleporting the player again (client must finish loading). */
+    private static final long RESPAWN_SETTLE_TICKS = 10L;
+
     private final GrandDuels plugin;
     private final MatchManager manager;
     private final Arena arena;
@@ -54,6 +57,7 @@ public final class Match {
     private final Map<UUID, Double> damageDealt = new HashMap<>();
     private final Set<UUID> restored = new HashSet<>();
     private final MatchScoreboard scoreboard;
+    private final Map<UUID, Long> respawnTimes = new HashMap<>();
 
     private Phase phase = Phase.COUNTDOWN;
     private BukkitTask countdownTask;
@@ -252,7 +256,7 @@ public final class Match {
         if (other != null) {
             plugin.messages().send(other, "duels.opponent-left", "opponent", quitter.getName());
         }
-        restoreNow(quitter);
+        restoreNow(quitter, false);
         switch (phase) {
             case FIGHTING -> end(other, quitter, true);
             case COUNTDOWN -> {
@@ -307,13 +311,14 @@ public final class Match {
     private void moveToSpectator(Player loser) {
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (!loser.isOnline() || phase == Phase.FINISHED) return;
-            if (loser.isDead()) loser.spigot().respawn();
+            if (loser.isDead()) {
+                loser.spigot().respawn();
+                respawnTimes.put(loser.getUniqueId(), System.currentTimeMillis());
+            }
+            // The respawn event already places the loser at their arena spawn; only switch mode after it settled.
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (!loser.isOnline() || loser.isDead() || phase != Phase.ENDING) return;
-                loser.setGameMode(GameMode.SPECTATOR);
-                Location spawn = spawnOf(loser.getUniqueId());
-                if (spawn != null) loser.teleport(spawn);
-            }, 2L);
+                if (loser.isOnline() && !loser.isDead() && phase == Phase.ENDING) loser.setGameMode(GameMode.SPECTATOR);
+            }, RESPAWN_SETTLE_TICKS);
         });
     }
 
@@ -363,31 +368,37 @@ public final class Match {
         cancelTasks();
         for (UUID id : participants()) {
             Player p = Bukkit.getPlayer(id);
-            if (p != null && !p.isDead()) restoreNow(p);
+            if (p != null && !p.isDead()) restoreNow(p, false);
         }
         arena.rollback().restoreAll();
         arena.setState(ArenaState.WAITING);
     }
 
     private void restoreWhenAlive(Player player) {
-        if (restored.contains(player.getUniqueId())) return;
+        UUID id = player.getUniqueId();
+        if (restored.contains(id)) return;
         if (player.isDead()) {
             player.spigot().respawn();
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                if (player.isOnline()) restoreNow(player);
-            });
-        } else {
-            restoreNow(player);
+            respawnTimes.put(id, System.currentTimeMillis());
         }
+        long sinceRespawn = System.currentTimeMillis() - respawnTimes.getOrDefault(id, 0L);
+        long waitTicks = Math.max(0L, RESPAWN_SETTLE_TICKS - sinceRespawn / 50L);
+        if (waitTicks <= 0L) {
+            restoreNow(player, true);
+            return;
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (player.isOnline() && !player.isDead()) restoreNow(player, true);
+        }, waitTicks);
     }
 
-    private void restoreNow(Player player) {
+    private void restoreNow(Player player, boolean async) {
         UUID id = player.getUniqueId();
         if (!restored.add(id)) return;
         PlayerSnapshot snapshot = snapshots.get(id);
         if (snapshot == null) return;
         plugin.cooldowns().clear(player);
-        snapshot.restore(player, destinationFor(snapshot));
+        snapshot.restore(player, destinationFor(snapshot), async);
         plugin.snapshots().delete(id);
         manager.release(id);
     }

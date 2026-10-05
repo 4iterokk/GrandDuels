@@ -12,7 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
-/** {@code /duel <player|accept|deny|cancel|stats>} */
+/** {@code /duel <player|accept|deny|cancel|cooldowns|stats>} */
 public final class DuelCommand implements TabExecutor {
 
     private final GrandDuels plugin;
@@ -24,6 +24,7 @@ public final class DuelCommand implements TabExecutor {
                 .register(new Accept(plugin))
                 .register(new Deny(plugin))
                 .register(new Cancel(plugin))
+                .register(new Cooldowns(plugin))
                 .register(new Stats(plugin));
     }
 

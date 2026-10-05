@@ -5,6 +5,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.chiterok.grandDuels.gui.GuiHolder;
 
@@ -23,5 +24,10 @@ public final class GuiListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onDrag(InventoryDragEvent event) {
         if (event.getView().getTopInventory().getHolder() instanceof GuiHolder) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onClose(InventoryCloseEvent event) {
+        if (event.getInventory().getHolder() instanceof GuiHolder holder) holder.onClose();
     }
 }

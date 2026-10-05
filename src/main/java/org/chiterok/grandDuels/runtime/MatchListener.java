@@ -90,6 +90,8 @@ public final class MatchListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         plugin.requests().purge(player.getUniqueId());
+        plugin.kitEdits().handleQuit(player);
+        plugin.preferences().save();
         Match match = plugin.matches().of(player);
         if (match != null) match.handleQuit(player);
         plugin.stats().evict(player.getUniqueId());

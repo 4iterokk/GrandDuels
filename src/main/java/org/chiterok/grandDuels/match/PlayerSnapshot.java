@@ -69,8 +69,14 @@ public final class PlayerSnapshot {
         return location;
     }
 
-    /** Resets the player completely to the captured state. {@code destination} overrides the saved location. */
-    public void restore(Player player, @Nullable Location destination) {
+    /**
+     * Resets the player completely to the captured state. {@code destination} overrides the saved location.
+     * <p>
+     * {@code async=true} uses {@link Player#teleportAsync(Location)}, which loads the target chunks before moving the
+     * player. A synchronous teleport right after a respawn or into unloaded chunks can leave the client stuck on
+     * "Loading terrain...". Use {@code async=false} only while the player is leaving (quit) or the server stops.
+     */
+    public void restore(Player player, @Nullable Location destination, boolean async) {
         player.closeInventory();
         player.getInventory().clear();
         ItemStack[] copy = new ItemStack[contents.length];
@@ -97,7 +103,9 @@ public final class PlayerSnapshot {
         if (scoreboard != null) player.setScoreboard(scoreboard);
 
         Location target = destination != null ? destination : location();
-        if (target != null) player.teleport(target);
+        if (target == null) return;
+        if (async) player.teleportAsync(target);
+        else player.teleport(target);
     }
 
     // ---------------------------------------------------------------- persistence

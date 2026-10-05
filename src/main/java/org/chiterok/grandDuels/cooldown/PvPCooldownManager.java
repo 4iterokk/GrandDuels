@@ -43,9 +43,8 @@ public final class PvPCooldownManager {
         return remainingMillis(player, type) > 0L;
     }
 
-    /** Starts the configured cooldown for {@code type}. A configured value of 0 disables it. */
-    public void apply(Player player, CooldownType type) {
-        double seconds = plugin.settings().cooldownSeconds(type);
+    /** Starts a cooldown of {@code seconds} (the duel's rule for this item). 0 or less disables it. */
+    public void apply(Player player, CooldownType type, double seconds) {
         if (seconds <= 0.0) return;
         long millis = (long) (seconds * 1000.0);
         expiries.computeIfAbsent(player.getUniqueId(), id -> new EnumMap<>(CooldownType.class))

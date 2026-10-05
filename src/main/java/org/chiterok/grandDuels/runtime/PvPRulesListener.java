@@ -5,6 +5,7 @@ import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -37,44 +38,47 @@ public final class PvPRulesListener implements Listener {
         Player player = event.getPlayer();
         Match match = plugin.matches().of(player);
         if (match == null) return;
-
-        Material material = event.getItem().getType();
-        boolean gapple = material == Material.GOLDEN_APPLE || material == Material.ENCHANTED_GOLDEN_APPLE;
-        if (gapple && !match.settings().allowGapples()) {
-            event.setCancelled(true);
-            plugin.messages().actionBar(player, "duels.gapples-disabled");
-            return;
-        }
-        CooldownType type = CooldownType.forConsumable(material);
-        if (type == null || !match.usesCustomCooldowns()) return;
-        if (plugin.cooldowns().isOnCooldown(player, type)) {
-            event.setCancelled(true);
-            plugin.cooldowns().notifyBlocked(player, type);
-            return;
-        }
-        plugin.cooldowns().apply(player, type);
+        CooldownType type = CooldownType.forConsumable(event.getItem().getType());
+        if (type == null || denyIfBanned(player, match, type, event)) return;
+        enforceCooldown(player, match, type, event);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onLaunch(ProjectileLaunchEvent event) {
         if (!(event.getEntity().getShooter() instanceof Player player)) return;
         Match match = plugin.matches().of(player);
-        if (match == null || !match.usesCustomCooldowns()) return;
+        if (match == null) return;
         CooldownType type = CooldownType.forProjectile(event.getEntityType());
-        if (type == null) return;
-        if (plugin.cooldowns().isOnCooldown(player, type)) {
-            event.setCancelled(true);
-            plugin.cooldowns().notifyBlocked(player, type);
-            return;
-        }
-        plugin.cooldowns().apply(player, type);
+        if (type == null || denyIfBanned(player, match, type, event)) return;
+        enforceCooldown(player, match, type, event);
     }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onRiptide(PlayerRiptideEvent event) {
         Player player = event.getPlayer();
         Match match = plugin.matches().of(player);
-        if (match != null && match.usesCustomCooldowns()) plugin.cooldowns().apply(player, CooldownType.TRIDENT);
+        if (match != null && match.usesCustomCooldowns()) {
+            plugin.cooldowns().apply(player, CooldownType.TRIDENT, match.settings().cooldownSeconds(CooldownType.TRIDENT));
+        }
+    }
+
+    /** @return true if the item is banned in this duel (the event is cancelled and the player informed). */
+    private boolean denyIfBanned(Player player, Match match, CooldownType type, Cancellable event) {
+        if (!match.settings().isBanned(type)) return false;
+        event.setCancelled(true);
+        plugin.messages().actionBar(player, "duels.item-banned");
+        return true;
+    }
+
+    /** Cancels the use while on cooldown, otherwise starts the duel's cooldown for this item. */
+    private void enforceCooldown(Player player, Match match, CooldownType type, Cancellable event) {
+        if (!match.usesCustomCooldowns()) return;
+        if (plugin.cooldowns().isOnCooldown(player, type)) {
+            event.setCancelled(true);
+            plugin.cooldowns().notifyBlocked(player, type);
+            return;
+        }
+        plugin.cooldowns().apply(player, type, match.settings().cooldownSeconds(type));
     }
 
     /** Right-click with a Riptide trident would launch the player; deny it when riptide is disabled. */
