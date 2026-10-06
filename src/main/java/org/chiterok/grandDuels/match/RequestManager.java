@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 import org.chiterok.grandDuels.GrandDuels;
 import org.chiterok.grandDuels.config.Messages;
-import org.chiterok.grandDuels.cooldown.CooldownType;
+import org.chiterok.grandDuels.cooldown.RuleType;
 import org.chiterok.grandDuels.kit.Kit;
 
 import java.util.ArrayList;
@@ -37,7 +37,7 @@ public final class RequestManager {
         UUID senderId = sender.getUniqueId();
         BukkitTask expiry = Bukkit.getScheduler().runTaskLater(plugin, () -> expire(senderId), seconds * 20L);
         DuelRequest request = new DuelRequest(senderId, sender.getName(), target.getUniqueId(), target.getName(),
-                kit.id(), settings, expiry);
+                kit, settings, expiry);
         bySender.put(senderId, request);
 
         Messages messages = plugin.messages();
@@ -51,7 +51,6 @@ public final class RequestManager {
         Messages m = plugin.messages();
         Component text = m.prefixed("duels.request-received", Messages.ph(
                 "sender", request.senderName(), "kit", kit.displayName(), "seconds", seconds,
-                "gapples", plainState(request.settings().allowGapples()),
                 "cooldowns", plainState(request.settings().customCooldowns())));
         Component accept = m.get("duels.request-accept-button")
                 .clickEvent(ClickEvent.runCommand("/duel accept " + request.senderName()))
@@ -67,7 +66,7 @@ public final class RequestManager {
     /** Human readable summary of cooldowns and bans, e.g. "Ender Pearl 15s, Wind Charge banned". */
     private String describe(MatchSettings settings) {
         List<String> parts = new ArrayList<>();
-        for (CooldownType type : CooldownType.values()) {
+        for (RuleType type : RuleType.values()) {
             String name = plugin.messages().string("cooldown-names." + type.configKey());
             if (settings.isBanned(type)) {
                 parts.add(name + " " + plugin.messages().string("duels.banned-word"));

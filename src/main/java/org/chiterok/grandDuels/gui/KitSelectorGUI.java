@@ -28,17 +28,37 @@ public final class KitSelectorGUI extends GuiHolder {
     private int page;
     private int pageCount = 1;
 
+    /** Which kits the selector lists: the server's standard kits or the viewer's own kits. */
+    public enum Source {
+        STANDARD(MenuManager.KIT_SELECTOR),
+        OWN(MenuManager.OWN_KIT_SELECTOR);
+
+        final String menuId;
+
+        Source(String menuId) {
+            this.menuId = menuId;
+        }
+    }
+
+    private final Source source;
+
     public KitSelectorGUI(GrandDuels plugin, Player viewer, Player target, int page) {
+        this(plugin, viewer, target, page, Source.STANDARD);
+    }
+
+    public KitSelectorGUI(GrandDuels plugin, Player viewer, Player target, int page, Source source) {
         super(plugin, viewer);
+        this.source = source;
         this.targetId = target.getUniqueId();
         this.targetName = target.getName();
-        this.kits = new ArrayList<>(plugin.kits().all());
+        this.kits = source == Source.OWN ? new ArrayList<>(plugin.playerKits().list(viewer.getUniqueId()))
+                : new ArrayList<>(plugin.kits().all());
         this.page = Math.max(0, page);
     }
 
     @Override
     public void open() {
-        MenuDefinition def = plugin.menus().get(MenuManager.KIT_SELECTOR);
+        MenuDefinition def = plugin.menus().get(source.menuId);
         List<Integer> kitSlots = def.slots("kit-slots");
         if (kitSlots.isEmpty()) {
             for (int i = 0; i < Math.max(1, def.size() - 9); i++) kitSlots.add(i);
@@ -118,7 +138,7 @@ public final class KitSelectorGUI extends GuiHolder {
                 viewer.closeInventory();
                 return;
             }
-            new DuelSettingsGUI(plugin, viewer, target, kit, page).open();
+            new DuelSettingsGUI(plugin, viewer, target, kit, page, source).open();
             return;
         }
         String action = actions.get(slot);
@@ -140,8 +160,16 @@ public final class KitSelectorGUI extends GuiHolder {
                 int returnPage = page;
                 new CooldownMenuGUI(plugin, viewer, () -> {
                     Player target = plugin.getServer().getPlayer(targetId);
-                    if (target != null) new KitSelectorGUI(plugin, viewer, target, returnPage).open();
+                    if (target != null) new KitSelectorGUI(plugin, viewer, target, returnPage, source).open();
                 }).open();
+            }
+            case "OPEN_OWN_KITS" -> {
+                Player target = plugin.getServer().getPlayer(targetId);
+                if (target != null) new KitSelectorGUI(plugin, viewer, target, 0, Source.OWN).open();
+            }
+            case "OPEN_STANDARD_KITS" -> {
+                Player target = plugin.getServer().getPlayer(targetId);
+                if (target != null) new KitSelectorGUI(plugin, viewer, target, 0, Source.STANDARD).open();
             }
             case "CLOSE" -> viewer.closeInventory();
             default -> { /* unknown action ids are ignored */ }

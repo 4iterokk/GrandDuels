@@ -23,7 +23,10 @@ public final class Messages {
     }
 
     /** Builds a placeholder map from alternating key/value arguments. */
+    @SuppressWarnings("unchecked")
     public static Map<String, String> ph(Object... keyValues) {
+        // Tolerate a ready-made map passed as the only "varargs" element (a classic misuse of this API).
+        if (keyValues.length == 1 && keyValues[0] instanceof Map<?, ?> ready) return (Map<String, String>) ready;
         if (keyValues.length % 2 != 0) throw new IllegalArgumentException("placeholders must be key/value pairs");
         Map<String, String> map = new LinkedHashMap<>();
         for (int i = 0; i < keyValues.length; i += 2) {
@@ -44,7 +47,8 @@ public final class Messages {
     public Component prefixed(String path, Map<String, String> placeholders) {
         String raw = configs.messages().getString(path);
         if (raw == null) return missing(path);
-        return ColorUtil.colorize(configs.messages().getString("prefix", "") + raw, placeholders);
+        String prefix = configs.messages().getString("prefix");
+        return ColorUtil.colorize((prefix == null ? "" : prefix) + raw, placeholders);
     }
 
     public List<Component> lines(String path, Map<String, String> placeholders) {
@@ -55,7 +59,9 @@ public final class Messages {
 
     /** Raw (uncolored) configured string, for callers that feed it into {@link ColorUtil} themselves. */
     public String string(String path) {
-        return configs.messages().getString(path, "[missing: " + path + "]");
+        // getString(path) honors the jar defaults; getString(path, fallback) would skip them for keys missing on disk
+        String value = configs.messages().getString(path);
+        return value != null ? value : "[missing: " + path + "]";
     }
 
     public List<String> stringList(String path) {
@@ -64,6 +70,14 @@ public final class Messages {
 
     public void send(CommandSender target, String path, Object... keyValues) {
         target.sendMessage(prefixed(path, ph(keyValues)));
+    }
+
+    public void send(CommandSender target, String path, Map<String, String> placeholders) {
+        target.sendMessage(prefixed(path, placeholders));
+    }
+
+    public void actionBar(Player player, String path, Map<String, String> placeholders) {
+        player.sendActionBar(get(path, placeholders));
     }
 
     public void sendPlain(CommandSender target, String path, Object... keyValues) {

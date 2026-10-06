@@ -33,7 +33,7 @@ public final class DuelService {
         }
         Kit kit = plugin.kits().get(plugin.settings().duel().defaultKit());
         if (kit == null) kit = plugin.kits().all().iterator().next();
-        sendRequest(sender, target, kit, plugin.preferences().get(sender.getUniqueId()).toSettings(plugin.settings()));
+        sendRequest(sender, target, kit, plugin.preferences().get(sender.getUniqueId()).toSettings(plugin.menus().defaults()));
     }
 
     public void sendRequest(Player sender, Player target, Kit kit, MatchSettings settings) {
@@ -78,15 +78,10 @@ public final class DuelService {
             plugin.messages().send(target, "general.player-not-found", "player", request.senderName());
             return;
         }
-        Kit kit = plugin.kits().get(request.kitId());
-        if (kit == null) {
-            plugin.requests().consume(request.senderId());
-            plugin.messages().send(target, "kits.not-found", "kit", request.kitId());
-            return;
-        }
+        Kit kit = request.kit();
 
         plugin.requests().consume(request.senderId());
-        MatchManager.StartResult result = plugin.matches().start(sender, target, kit, request.settings());
+        MatchManager.StartResult result = plugin.matches().start(sender, target, kit, request.settings(), DuelMode.FRIENDLY);
         switch (result) {
             case STARTED -> { /* Match sends its own messages */ }
             case PLAYER_BUSY -> {

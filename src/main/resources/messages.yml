@@ -11,14 +11,14 @@ general:
   invalid-name: "&cNames may only contain letters, numbers, '_' and '-' (max 32 characters)."
 
 duels:
-  usage: "&7Usage: &f/duel <player> &8| &f/duel accept|deny [player] &8| &f/duel cancel &8| &f/duel stats [player]"
+  usage: "&7Usage: &f/duel <player> &8| &f/duel accept|deny [player] &8| &f/duel cancel &8| &f/duel cooldowns &8| &f/duel stats [player]"
   cannot-self: "&cYou cannot duel yourself."
   self-busy: "&cYou are already in a duel."
   target-busy: "&f{player} &cis already in a duel."
   player-busy: "&cOne of the players is already in a duel."
   already-sent: "&cYou already have a pending request. Use &f/duel cancel &cfirst."
   request-sent: "&7Duel request sent to &f{target} &7(kit &f{kit}&7). It expires in &f{seconds}s&7."
-  request-received: "&f{sender} &7challenged you to a duel! Kit: &f{kit} &8| &7Gapples: &f{gapples} &8| &7Custom cooldowns: &f{cooldowns} &8(&7{seconds}s&8)"
+  request-received: "&f{sender} &7challenged you to a duel! Kit: &f{kit} &8| &7Custom cooldowns: &f{cooldowns} &8(&7{seconds}s&8)"
   request-accept-button: "&a&l[ACCEPT]"
   request-deny-button: "&c&l[DENY]"
   request-accept-hover: "&7Click to accept the duel"
@@ -38,7 +38,12 @@ duels:
   summary: "&7You dealt &f{damage} &7damage, your opponent dealt &f{opponent_damage}&7."
   ongoing: "&7vs &f{opponent} &8| &c{health}\u2764 &8| &f{time}"
   command-blocked: "&cYou cannot use commands during a duel."
-  gapples-disabled: "&cGolden apples are disabled in this duel."
+  elo-gain: "&7Ranked rating: &a+{amount}"
+  elo-loss: "&7Ranked rating: &c-{amount}"
+  item-banned: "&cThis item is banned in this duel."
+  banned-word: "banned"
+  no-rules-word: "default"
+  request-details: "&7Rules: &f{details}"
   item-blocked: "&cYou cannot drop or pick up items during a duel."
   elytra-blocked: "&cElytra are disabled during duels."
   riptide-blocked: "&cRiptide is disabled during duels."
@@ -46,6 +51,38 @@ duels:
   recovered: "&7Your inventory and location were restored after an interrupted duel."
   state-on: "&aON"
   state-off: "&cOFF"
+
+modes:
+  friendly: "Friendly"
+  unranked: "Unranked"
+  ranked: "Ranked"
+
+queue:
+  joined: "&7You joined the &f{mode} &7queue for &f{kit}&7. Leave with &f/duel leave&7."
+  left: "&7You left the queue."
+  not-queued: "&cYou are not in a queue."
+  busy: "&cYou cannot queue right now."
+  standard-only: "&cOnly standard kits can be queued."
+  kit-removed: "&cThe kit you queued for no longer exists. You were removed from the queue."
+  searching: "&7Searching &f{mode} &7match &8| &f{kit} &8| &f{time}"
+  searching-ranked: "&7Searching &f{mode} &7match &8| &f{kit} &8| &f{time} &8| &f{elo} ELO &7(±&f{range}&7)"
+  joined-ranked: "&7You joined the &fRanked &7queue for &f{kit}&7. Rating: &f{elo} ELO&7, matching within &f±{range}&7 (widens while you wait). Leave with &f/duel leave&7."
+  found: "&7Opponent found: &f{opponent}"
+  found-ranked: "&7Opponent found: &f{opponent} &8(&f{elo} ELO&8) &7- your rating: &f{own_elo}"
+
+playerkits:
+  usage: "&7Usage: &f/duel kit create <name> &8| &f/duel kit save <name> &8| &f/duel kit delete <name> &8| &f/duel kit list"
+  created: "&7Kit &f{kit} &7created from your inventory, armor and offhand."
+  updated: "&7Kit &f{kit} &7updated from your current inventory."
+  exists: "&cYou already have a kit named &f{kit}&c. Use &f/duel kit save {kit} &cto overwrite it."
+  limit: "&cYou reached your kit limit (&f{limit}&c). Delete a kit first."
+  empty: "&cYou have nothing to save. Put items in your inventory first."
+  disabled: "&cPlayer kits are disabled."
+  skipped: "&e{count} item(s) of forbidden types were not saved."
+  deleted: "&7Kit &f{kit} &7deleted."
+  not-found: "&cYou have no kit named &f{kit}&c."
+  list: "&7Your kits (&f{count}&7/&f{limit}&7): &f{kits}"
+  list-empty: "&7You have no kits yet. Create one with &f/duel kit save <name>&7."
 
 titles:
   countdown:
@@ -70,6 +107,7 @@ cooldowns:
   trident: "&bTrident &7cooldown: &f{time}s"
   wind-charge: "&fWind Charge &7cooldown: &f{time}s"
   ender-pearl: "&5Ender Pearl &7cooldown: &f{time}s"
+  firework-rocket: "&cFirework Rocket &7cooldown: &f{time}s"
   chorus-fruit: "&dChorus Fruit &7cooldown: &f{time}s"
 
 arena:
@@ -86,66 +124,53 @@ arena:
   outside-bounds: "&cYou cannot leave the arena."
 
 kits:
-  usage-save: "&7Usage: &f/duels savekit <id>"
+  usage: "&7Usage: &f/duels kit <create|edit|save|delete> [name] &8| &f/duels kit cancel"
+  create-started: "&7Creating kit &f{kit}&7: you are in creative mode with an empty loadout. Set up items, armor, offhand and effects, then run &f/duels kit save&7 (or &f/duels kit cancel&7)."
+  edit-started: "&7Editing kit &f{kit}&7: change items, armor, offhand and effects, then run &f/duels kit save&7 (or &f/duels kit cancel&7)."
+  edit-saved: "&7Kit &f{kit} &7saved. Your own inventory was restored."
+  edit-cancelled: "&7Kit editing cancelled. Your own inventory was restored."
   saved: "&7Kit &f{kit} &7saved from your inventory and effects."
+  deleted: "&7Kit &f{kit} &7deleted."
+  exists: "&cA kit named &f{kit} &calready exists. Use &f/duels kit edit {kit}&c."
   not-found: "&cKit &f{kit} &cdoes not exist."
+  not-editing: "&cYou are not editing a kit. Use &f/duels kit edit <name> &cfirst, or &f/duels kit save <name> &cto save your current loadout."
+  already-editing: "&cYou are already editing a kit. Finish with &f/duels kit save &cor &f/duels kit cancel&c."
+  being-edited: "&cKit &f{kit} &cis being edited right now."
+  in-duel: "&cYou cannot do that during a duel."
+  editing-busy: "&cFinish editing your kit first (&f/duels kit save &cor &f/duels kit cancel&c)."
   none-available: "&cNo kits are configured."
 
+cooldown-names:
+  golden-apple: "Golden Apple"
+  enchanted-golden-apple: "Enchanted Golden Apple"
+  trident: "Trident"
+  wind-charge: "Wind Charge"
+  ender-pearl: "Ender Pearl"
+  chorus-fruit: "Chorus Fruit"
+  firework-rocket: "Firework Rocket"
+  elytra: "Elytra"
+  riptide: "Riptide"
+
 admin:
-  usage: "&7Usage: &f/duels <arena|reload|savekit|setlobby|forceend>"
+  usage: "&7Usage: &f/duels <arena|kit|reload|setlobby|forceend>"
   reloaded: "&7Configuration reloaded. Kits: &f{kits}&7, arenas: &f{arenas}&7."
   lobby-set: "&7Lobby location set to &f{location}&7."
   force-usage: "&7Usage: &f/duels forceend <player>"
   force-ended: "&7Forcibly ended the duel of &f{player}&7."
   force-none: "&c{player} is not in a duel."
 
-gui:
-  filler: " "
-  kit-selector:
-    title: "&8Select a kit"
-    hint: "&eClick to select"
-    prev: "&7\u00ab Previous page"
-    next: "&7Next page \u00bb"
-    page: "&7Page &f{page}&7/&f{pages}"
-    close: "&cClose"
-    empty: "&cNo kits available"
-  settings:
-    title: "&8Duel settings"
-    gapples-on: "&fAllow Gapples: &aON"
-    gapples-off: "&fAllow Gapples: &cOFF"
-    gapples-lore:
-      - "&7Toggle golden apples in this duel."
-      - "&eClick to toggle"
-    cooldowns-on: "&fCustom Cooldowns: &aON"
-    cooldowns-off: "&fCustom Cooldowns: &cOFF"
-    cooldowns-lore:
-      - "&7Apply the configured item cooldowns"
-      - "&7(Gapples, Pearls, Tridents, Wind Charges...)."
-      - "&eClick to toggle"
-    send: "&a&lSend request"
-    send-lore:
-      - "&7Challenge &f{target} &7with kit &f{kit}"
-    back: "&7\u00ab Back to kits"
-    cancel: "&cCancel"
-  tags:
-    mace: "&8\u2022 &7Mace"
-    wind-charge: "&8\u2022 &7Wind Charges"
-    trident: "&8\u2022 &7Trident"
-    spear: "&8\u2022 &7Spear"
-    wolf-armor: "&8\u2022 &7Wolf Armor"
-    components: "&8\u2022 &7Data components: &f{components}"
-
 scoreboard:
   title: "&#ff5555&lGrand&#ffaa00&lDuels"
   lines:
-    - "&8&m                    "
-    - "&7Kit: &f{kit}"
-    - "&7Arena: &f{arena}"
-    - "&7Time: &f{time}"
+    - "&r "
+    - " &fKit: &f{kit}"
+    - " &fArena: &f{arena}"
+    - " &fMode: &f{mode}"
+    - " &fTime: &f{time}"
     - " "
     - "&f{player1}: &c{health1}\u2764"
     - "&f{player2}: &c{health2}\u2764"
-    - "&8&m                    &r"
+    - "&r"
 
 stats:
   lines:
@@ -154,4 +179,5 @@ stats:
     - "&7Wins: &f{wins} &8| &7Losses: &f{losses}"
     - "&7Kills: &f{kills} &8| &7Deaths: &f{deaths} &8| &7K/D: &f{kd}"
     - "&7Win streak: &f{streak} &8| &7Best streak: &f{best_streak}"
+    - "&7Ranked rating: &f{elo}"
     - "&8&m                         "

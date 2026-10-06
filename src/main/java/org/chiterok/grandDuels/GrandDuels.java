@@ -8,6 +8,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.chiterok.grandDuels.arena.ArenaManager;
 import org.chiterok.grandDuels.command.admin.DuelsCommand;
 import org.chiterok.grandDuels.command.player.DuelCommand;
+import org.chiterok.grandDuels.command.player.QueueCommand;
 import org.chiterok.grandDuels.config.ConfigManager;
 import org.chiterok.grandDuels.config.Messages;
 import org.chiterok.grandDuels.config.Settings;
@@ -18,8 +19,11 @@ import org.chiterok.grandDuels.data.StatsManager;
 import org.chiterok.grandDuels.gui.MenuManager;
 import org.chiterok.grandDuels.kit.KitEditManager;
 import org.chiterok.grandDuels.kit.KitManager;
+import org.chiterok.grandDuels.kit.PlayerKitManager;
+import org.chiterok.grandDuels.match.DuelMode;
 import org.chiterok.grandDuels.match.DuelService;
 import org.chiterok.grandDuels.match.MatchManager;
+import org.chiterok.grandDuels.match.QueueManager;
 import org.chiterok.grandDuels.match.RequestManager;
 import org.chiterok.grandDuels.runtime.ArenaProtectionListener;
 import org.chiterok.grandDuels.runtime.CombatRestrictionListener;
@@ -35,6 +39,8 @@ public final class GrandDuels extends JavaPlugin {
     private ArenaManager arenas;
     private KitManager kits;
     private KitEditManager kitEdits;
+    private PlayerKitManager playerKits;
+    private QueueManager queues;
     private MenuManager menus;
     private PreferenceManager preferences;
     private PvPCooldownManager cooldowns;
@@ -51,6 +57,8 @@ public final class GrandDuels extends JavaPlugin {
         this.arenas = new ArenaManager(this);
         this.kits = new KitManager(this);
         this.kitEdits = new KitEditManager(this);
+        this.playerKits = new PlayerKitManager(this);
+        this.queues = new QueueManager(this);
         this.menus = new MenuManager(this);
         this.preferences = new PreferenceManager(this);
         this.cooldowns = new PvPCooldownManager(this);
@@ -64,11 +72,14 @@ public final class GrandDuels extends JavaPlugin {
         kits.reload();
         preferences.load();
         stats.start();
+        queues.start();
 
         registerListeners(new GuiListener(), new PvPRulesListener(this), new CombatRestrictionListener(this),
                 new ArenaProtectionListener(this), new MatchListener(this));
         registerCommand("duel", new DuelCommand(this));
         registerCommand("duels", new DuelsCommand(this));
+        registerExecutor("ranked", new QueueCommand(this, DuelMode.RANKED));
+        registerExecutor("unranked", new QueueCommand(this, DuelMode.UNRANKED));
 
         // /reload or late enable: players are already online
         for (Player online : Bukkit.getOnlinePlayers()) {
@@ -80,6 +91,7 @@ public final class GrandDuels extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (queues != null) queues.stop();
         if (kitEdits != null) kitEdits.shutdown();
         if (matches != null) matches.shutdown();
         if (preferences != null) preferences.saveNow();
@@ -96,6 +108,15 @@ public final class GrandDuels extends JavaPlugin {
 
     private void registerListeners(Listener... listeners) {
         for (Listener listener : listeners) getServer().getPluginManager().registerEvents(listener, this);
+    }
+
+    private void registerExecutor(String name, org.bukkit.command.CommandExecutor executor) {
+        PluginCommand command = getCommand(name);
+        if (command == null) {
+            getLogger().severe("Command '" + name + "' is missing from plugin.yml");
+            return;
+        }
+        command.setExecutor(executor);
     }
 
     private void registerCommand(String name, org.bukkit.command.TabExecutor executor) {
@@ -126,6 +147,14 @@ public final class GrandDuels extends JavaPlugin {
 
     public KitManager kits() {
         return kits;
+    }
+
+    public PlayerKitManager playerKits() {
+        return playerKits;
+    }
+
+    public QueueManager queues() {
+        return queues;
     }
 
     public KitEditManager kitEdits() {

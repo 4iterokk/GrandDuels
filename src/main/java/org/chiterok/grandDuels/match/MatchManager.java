@@ -42,7 +42,24 @@ public final class MatchManager {
         return new ArrayList<>(new java.util.LinkedHashSet<>(byPlayer.values()));
     }
 
-    public StartResult start(Player first, Player second, Kit kit, MatchSettings settings) {
+    /** Players currently fighting in duels of {@code mode}, per standard kit id (player kits are not counted). */
+    public Map<String, Integer> playersPerKit(DuelMode mode) {
+        Map<String, Integer> counts = new HashMap<>();
+        for (Match match : all()) {
+            if (match.mode() == mode && match.kit().owner() == null) counts.merge(match.kit().id(), 2, Integer::sum);
+        }
+        return counts;
+    }
+
+    public int playersInMode(DuelMode mode) {
+        int total = 0;
+        for (Match match : all()) {
+            if (match.mode() == mode) total += 2;
+        }
+        return total;
+    }
+
+    public StartResult start(Player first, Player second, Kit kit, MatchSettings settings, DuelMode mode) {
         if (isInMatch(first.getUniqueId()) || isInMatch(second.getUniqueId())
                 || plugin.kitEdits().isEditing(first.getUniqueId()) || plugin.kitEdits().isEditing(second.getUniqueId())) {
             return StartResult.PLAYER_BUSY;
@@ -51,9 +68,11 @@ public final class MatchManager {
         Arena arena = plugin.arenas().acquireFree(plugin.settings().duel().boundaryPadding());
         if (arena == null) return StartResult.NO_ARENA;
 
-        Match match = new Match(plugin, this, arena, kit, settings, first, second);
+        Match match = new Match(plugin, this, arena, kit, settings, mode, first, second);
         byPlayer.put(first.getUniqueId(), match);
         byPlayer.put(second.getUniqueId(), match);
+        plugin.queues().leave(first.getUniqueId());
+        plugin.queues().leave(second.getUniqueId());
         plugin.requests().purge(first.getUniqueId());
         plugin.requests().purge(second.getUniqueId());
 

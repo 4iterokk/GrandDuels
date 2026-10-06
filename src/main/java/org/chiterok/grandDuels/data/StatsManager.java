@@ -88,9 +88,51 @@ public final class StatsManager {
         executor.execute(() -> cache.remove(uuid));
     }
 
-    public void recordResult(Player winner, Player loser) {
-        update(winner.getUniqueId(), winner.getName(), PlayerStats::afterWin);
-        update(loser.getUniqueId(), loser.getName(), PlayerStats::afterLoss);
+    /**
+     * Records a finished duel. Ranked duels also move the ELO rating (the loser loses what the winner gains).
+     * @return completes on the storage thread with the rating points the winner gained (0 when unranked or on error)
+     */
+    public CompletableFuture<Integer> recordResult(Player winner, Player loser, boolean ranked) {
+        CompletableFuture<Integer> result = new CompletableFuture<>();
+        if (executor == null || storage == null || executor.isShutdown()) {
+            result.complete(0);
+            return result;
+        }
+        final UUID winnerId = winner.getUniqueId();
+        final UUID loserId = loser.getUniqueId();
+        final String winnerName = winner.getName();
+        final String loserName = loser.getName();
+        final int kFactor = plugin.settings().matchmaking().kFactor();
+        executor.execute(() -> {
+            try {
+                PlayerStats w = loadForUpdate(winnerId, winnerName);
+                PlayerStats l = loadForUpdate(loserId, loserName);
+                PlayerStats w2 = w.afterWin();
+                PlayerStats l2 = l.afterLoss();
+                int gain = 0;
+                if (ranked) {
+                    double expected = 1.0 / (1.0 + Math.pow(10.0, (l.elo() - w.elo()) / 400.0));
+                    gain = Math.max(1, (int) Math.round(kFactor * (1.0 - expected)));
+                    w2 = w2.withElo(w.elo() + gain);
+                    l2 = l2.withElo(l.elo() - gain);
+                }
+                storage.save(w2);
+                storage.save(l2);
+                cache.put(winnerId, w2);
+                cache.put(loserId, l2);
+                result.complete(gain);
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.WARNING, "Could not record duel result", e);
+                result.complete(0);
+            }
+        });
+        return result;
+    }
+
+    private PlayerStats loadForUpdate(UUID uuid, String name) throws Exception {
+        PlayerStats current = cache.get(uuid);
+        if (current == null) current = storage.load(uuid).orElseGet(() -> PlayerStats.empty(uuid, name));
+        return current.withName(name);
     }
 
     /** Looks up stats of any player (online or not) without blocking the main thread. */

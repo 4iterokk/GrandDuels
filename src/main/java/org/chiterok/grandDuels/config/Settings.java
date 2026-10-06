@@ -1,20 +1,22 @@
 package org.chiterok.grandDuels.config;
 
+import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.chiterok.grandDuels.cooldown.CooldownType;
 import org.chiterok.grandDuels.utils.StoredLocation;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
-/** Immutable, typed snapshot of config.yml. A new instance is built on every reload. */
+/**
+ * Immutable, typed snapshot of config.yml. A new instance is built on every reload.
+ * Item restrictions and cooldowns are NOT here: they live in menu/cooldowns.yml (see RuleDefaults).
+ */
 public record Settings(StorageType storageType, DuelSettings duel, RuleSettings rules,
-                       Map<CooldownType, Double> cooldowns) {
+                       MatchmakingSettings matchmaking, PlayerKitSettings playerKits) {
 
     public enum StorageType { YAML, SQLITE }
 
@@ -27,12 +29,17 @@ public record Settings(StorageType storageType, DuelSettings duel, RuleSettings 
 
     public record WeaponRule(double maxDamage, double knockbackMultiplier) {}
 
-    public record RuleSettings(boolean elytraDisabled, boolean riptideEnabled, boolean blockItemDrop,
-                               boolean blockItemPickup, WeaponRule mace, WeaponRule spear) {}
+    public record RuleSettings(boolean blockItemDrop, boolean blockItemPickup, WeaponRule mace, WeaponRule spear) {}
 
-    public double cooldownSeconds(CooldownType type) {
-        return cooldowns.getOrDefault(type, 0.0);
-    }
+    /**
+     * @param kFactor            ELO k-factor
+     * @param initialEloRange    ranked: allowed ELO difference when a player joins the queue
+     * @param eloRangePerSecond  ranked: how much the allowed difference grows per second of waiting
+     * @param maxEloRange        ranked: upper limit of the allowed difference (0 = unlimited)
+     */
+    public record MatchmakingSettings(int kFactor, int initialEloRange, double eloRangePerSecond, int maxEloRange) {}
+
+    public record PlayerKitSettings(int maxPerPlayer, Set<Material> bannedMaterials) {}
 
     public static Settings from(FileConfiguration c) {
         Set<String> whitelist = new LinkedHashSet<>();
@@ -57,21 +64,25 @@ public record Settings(StorageType storageType, DuelSettings duel, RuleSettings 
                 Set.copyOf(whitelist));
 
         RuleSettings rules = new RuleSettings(
-                c.getBoolean("rules.elytra-disabled", true),
-                c.getBoolean("rules.riptide-enabled", false),
                 c.getBoolean("rules.block-item-drop", true),
                 c.getBoolean("rules.block-item-pickup", true),
                 weaponRule(c.getConfigurationSection("rules.mace")),
                 weaponRule(c.getConfigurationSection("rules.spear")));
 
-        Map<CooldownType, Double> cooldowns = new EnumMap<>(CooldownType.class);
-        for (CooldownType type : CooldownType.values()) {
-            cooldowns.put(type, Math.max(0.0, c.getDouble("cooldowns." + type.configKey(), 0.0)));
+        Set<Material> banned = EnumSet.noneOf(Material.class);
+        for (String name : c.getStringList("player-kits.banned-materials")) {
+            Material material = Material.matchMaterial(name);
+            if (material != null) banned.add(material);
         }
 
         return new Settings(
                 parseEnum(StorageType.class, c.getString("storage.type"), StorageType.YAML),
-                duel, rules, Map.copyOf(cooldowns));
+                duel, rules,
+                new MatchmakingSettings(Math.max(1, c.getInt("matchmaking.k-factor", 32)),
+                        Math.max(0, c.getInt("matchmaking.ranked.initial-elo-range", 100)),
+                        Math.max(0.0, c.getDouble("matchmaking.ranked.elo-range-per-second", 5.0)),
+                        Math.max(0, c.getInt("matchmaking.ranked.max-elo-range", 800))),
+                new PlayerKitSettings(Math.max(0, c.getInt("player-kits.max-per-player", 5)), Set.copyOf(banned)));
     }
 
     private static WeaponRule weaponRule(@Nullable ConfigurationSection s) {

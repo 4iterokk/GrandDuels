@@ -49,6 +49,7 @@ public final class Match {
     private final Arena arena;
     private final Kit kit;
     private final MatchSettings settings;
+    private final DuelMode mode;
     private final UUID id1;
     private final UUID id2;
     private final String name1;
@@ -65,13 +66,14 @@ public final class Match {
     private BukkitTask celebrationTask;
     private int elapsedSeconds;
 
-    Match(GrandDuels plugin, MatchManager manager, Arena arena, Kit kit, MatchSettings settings,
+    Match(GrandDuels plugin, MatchManager manager, Arena arena, Kit kit, MatchSettings settings, DuelMode mode,
           Player first, Player second) {
         this.plugin = plugin;
         this.manager = manager;
         this.arena = arena;
         this.kit = kit;
         this.settings = settings;
+        this.mode = mode;
         this.id1 = first.getUniqueId();
         this.id2 = second.getUniqueId();
         this.name1 = first.getName();
@@ -87,6 +89,10 @@ public final class Match {
 
     public Kit kit() {
         return kit;
+    }
+
+    public DuelMode mode() {
+        return mode;
     }
 
     public MatchSettings settings() {
@@ -289,7 +295,14 @@ public final class Match {
 
         Messages m = plugin.messages();
         if (winner != null && loser != null) {
-            plugin.stats().recordResult(winner, loser);
+            boolean ranked = mode == DuelMode.RANKED;
+            plugin.stats().recordResult(winner, loser, ranked).thenAccept(change -> {
+                if (!ranked || change <= 0) return;
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (winner.isOnline()) plugin.messages().send(winner, "duels.elo-gain", "amount", change);
+                    if (loser.isOnline()) plugin.messages().send(loser, "duels.elo-loss", "amount", change);
+                });
+            });
             m.title(winner, "victory", Messages.ph("opponent", loser.getName()), 5, 60, 10);
             m.send(winner, "duels.summary", "damage", fmt(damageDealt.getOrDefault(winner.getUniqueId(), 0.0)),
                     "opponent_damage", fmt(damageDealt.getOrDefault(loser.getUniqueId(), 0.0)));
@@ -436,6 +449,7 @@ public final class Match {
         Player p1 = Bukkit.getPlayer(id1);
         Player p2 = Bukkit.getPlayer(id2);
         return Messages.ph("kit", kit.displayName(), "arena", arena.name(), "time", TimeUtil.mmss(elapsedSeconds),
+                "mode", plugin.messages().string("modes." + mode.name().toLowerCase(Locale.ROOT)),
                 "player1", name1, "health1", p1 == null ? "0" : hearts(p1),
                 "player2", name2, "health2", p2 == null ? "0" : hearts(p2));
     }

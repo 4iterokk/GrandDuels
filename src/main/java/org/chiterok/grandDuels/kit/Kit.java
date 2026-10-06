@@ -7,7 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
-import org.chiterok.grandDuels.cooldown.CooldownType;
+import org.chiterok.grandDuels.cooldown.RuleType;
 import org.chiterok.grandDuels.match.MatchSettings;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Immutable kit definition. {@code components} lists the Paper data components that were customized in kits.yml
@@ -25,7 +26,8 @@ public record Kit(String id, String displayName, ItemStack icon, List<String> de
                   Map<Integer, ItemStack> items,
                   @Nullable ItemStack helmet, @Nullable ItemStack chestplate,
                   @Nullable ItemStack leggings, @Nullable ItemStack boots, @Nullable ItemStack offhand,
-                  List<PotionEffect> effects, Set<String> components) {
+                  List<PotionEffect> effects, Set<String> components,
+                  @Nullable UUID owner) {
 
     /** Replaces the player's inventory, effects, health and food with this kit. */
     public void apply(Player player, MatchSettings settings) {
@@ -51,7 +53,7 @@ public record Kit(String id, String displayName, ItemStack icon, List<String> de
 
     private static boolean isAllowed(ItemStack item, MatchSettings settings) {
         Material type = item.getType();
-        for (CooldownType banned : settings.banned()) {
+        for (RuleType banned : settings.banned()) {
             if (banned.material() == type) return false;
         }
         return true;

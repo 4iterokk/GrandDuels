@@ -13,6 +13,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.util.BoundingBox;
 import org.chiterok.grandDuels.GrandDuels;
+import org.chiterok.grandDuels.cooldown.RuleType;
 import org.chiterok.grandDuels.match.Match;
 
 import java.util.Locale;
@@ -32,7 +33,8 @@ public final class CombatRestrictionListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onGlide(EntityToggleGlideEvent event) {
         if (!event.isGliding() || !(event.getEntity() instanceof Player player)) return;
-        if (!plugin.settings().rules().elytraDisabled() || plugin.matches().of(player) == null) return;
+        Match match = plugin.matches().of(player);
+        if (match == null || !match.settings().isBanned(RuleType.ELYTRA)) return;
         event.setCancelled(true);
         plugin.messages().actionBar(player, "duels.elytra-blocked");
     }

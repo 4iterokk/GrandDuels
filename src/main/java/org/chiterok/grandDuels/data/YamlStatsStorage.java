@@ -29,7 +29,8 @@ public final class YamlStatsStorage implements StatsStorage {
         ConfigurationSection s = yaml.getConfigurationSection("players." + uuid);
         if (s == null) return Optional.empty();
         return Optional.of(new PlayerStats(uuid, s.getString("name", "unknown"), s.getInt("wins"), s.getInt("losses"),
-                s.getInt("kills"), s.getInt("deaths"), s.getInt("streak"), s.getInt("best-streak")));
+                s.getInt("kills"), s.getInt("deaths"), s.getInt("streak"), s.getInt("best-streak"),
+                s.getInt("elo", PlayerStats.DEFAULT_ELO)));
     }
 
     @Override
@@ -42,6 +43,7 @@ public final class YamlStatsStorage implements StatsStorage {
         yaml.set(base + ".deaths", stats.deaths());
         yaml.set(base + ".streak", stats.currentStreak());
         yaml.set(base + ".best-streak", stats.bestStreak());
+        yaml.set(base + ".elo", stats.elo());
         yaml.save(file);
     }
 

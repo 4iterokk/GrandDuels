@@ -18,6 +18,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /** Loads kits from kits.yml and saves kits from a player's current loadout. */
@@ -47,7 +48,7 @@ public final class KitManager {
                 if (section == null) continue;
                 String id = rawId.toLowerCase(Locale.ROOT);
                 try {
-                    loaded.put(id, parse(id, section));
+                    loaded.put(id, parse(id, section, null));
                 } catch (IllegalArgumentException e) {
                     plugin.getLogger().warning("Skipping kit '" + rawId + "': " + e.getMessage());
                 }
@@ -69,7 +70,8 @@ public final class KitManager {
         return new ArrayList<>(kits.keySet());
     }
 
-    private Kit parse(String id, ConfigurationSection s) {
+    /** Parses a kit section (server kits and player kits share the format). */
+    public Kit parse(String id, ConfigurationSection s, @Nullable UUID owner) {
         Set<String> used = new TreeSet<>();
 
         Map<Integer, ItemStack> items = new LinkedHashMap<>();
@@ -100,7 +102,7 @@ public final class KitManager {
         ItemStack icon = parseIcon(s, items, used);
         return new Kit(id, s.getString("display-name", "&f" + id), icon, List.copyOf(s.getStringList("description")),
                 Map.copyOf(items), helmet, chestplate, leggings, boots, offhand, List.copyOf(effects),
-                Set.copyOf(used));
+                Set.copyOf(used), owner);
     }
 
     private ItemStack decodeSection(ConfigurationSection parent, String key, String path, Set<String> used) {
@@ -143,30 +145,50 @@ public final class KitManager {
             kit.set("icon", inHand.getType().isAir() ? Material.IRON_SWORD.name() : inHand.getType().name());
             kit.set("description", List.of("&7Saved from a player loadout."));
         }
+        writeLoadout(kit, player, true, Set.of());
+
+        plugin.configs().kitsFile().save();
+        reload();
+    }
+
+    /**
+     * Writes the player's hotbar/inventory, armor, offhand (and optionally active effects) into {@code kit},
+     * replacing any previous loadout there. Items whose material is in {@code excluded} are skipped.
+     * @return the number of skipped items
+     */
+    public int writeLoadout(ConfigurationSection kit, Player player, boolean includeEffects, Set<Material> excluded) {
         kit.set("items", null);
         kit.set("armor", null);
         kit.set("offhand", null);
         kit.set("effects", null);
 
+        int skipped = 0;
         PlayerInventory inventory = player.getInventory();
         for (int slot = 0; slot < 36; slot++) {
             ItemStack item = inventory.getItem(slot);
             if (isEmpty(item)) continue;
+            if (excluded.contains(item.getType())) {
+                skipped++;
+                continue;
+            }
             codec.encode(kit.createSection("items." + slot), item);
         }
-        writeArmor(kit, "helmet", inventory.getHelmet());
-        writeArmor(kit, "chestplate", inventory.getChestplate());
-        writeArmor(kit, "leggings", inventory.getLeggings());
-        writeArmor(kit, "boots", inventory.getBoots());
+        skipped += writeArmor(kit, "helmet", inventory.getHelmet(), excluded);
+        skipped += writeArmor(kit, "chestplate", inventory.getChestplate(), excluded);
+        skipped += writeArmor(kit, "leggings", inventory.getLeggings(), excluded);
+        skipped += writeArmor(kit, "boots", inventory.getBoots(), excluded);
         ItemStack offhand = inventory.getItemInOffHand();
-        if (!isEmpty(offhand)) codec.encode(kit.createSection("offhand"), offhand);
+        if (!isEmpty(offhand)) {
+            if (excluded.contains(offhand.getType())) skipped++;
+            else codec.encode(kit.createSection("offhand"), offhand);
+        }
 
-        List<Map<String, Object>> effects = new ArrayList<>();
-        for (PotionEffect effect : player.getActivePotionEffects()) effects.add(codec.encodeEffect(effect));
-        if (!effects.isEmpty()) kit.set("effects", effects);
-
-        plugin.configs().kitsFile().save();
-        reload();
+        if (includeEffects) {
+            List<Map<String, Object>> effects = new ArrayList<>();
+            for (PotionEffect effect : player.getActivePotionEffects()) effects.add(codec.encodeEffect(effect));
+            if (!effects.isEmpty()) kit.set("effects", effects);
+        }
+        return skipped;
     }
 
     /** Key of the kit section in kits.yml (kit ids are case-insensitive), or {@code null}. */
@@ -189,8 +211,11 @@ public final class KitManager {
         return true;
     }
 
-    private void writeArmor(ConfigurationSection kit, String slot, @Nullable ItemStack item) {
-        if (!isEmpty(item)) codec.encode(kit.createSection("armor." + slot), item);
+    private int writeArmor(ConfigurationSection kit, String slot, @Nullable ItemStack item, Set<Material> excluded) {
+        if (isEmpty(item)) return 0;
+        if (excluded.contains(item.getType())) return 1;
+        codec.encode(kit.createSection("armor." + slot), item);
+        return 0;
     }
 
     private static boolean isEmpty(@Nullable ItemStack item) {

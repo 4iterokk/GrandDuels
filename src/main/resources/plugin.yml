@@ -12,6 +12,16 @@ commands:
     usage: /<command> <player|accept|deny|cancel|stats>
     aliases: [1v1, challenge]
     permission: grandduels.duel
+  ranked:
+    description: Challenge a player or manage duel requests
+    usage: /<command> <player|accept|deny|cancel|stats>
+    aliases: [ 1v1, challenge ]
+    permission: grandduels.ranked
+  unranked:
+    description: Challenge a player or manage duel requests
+    usage: /<command> <player|accept|deny|cancel|stats>
+    aliases: [ 1v1, challenge ]
+    permission: grandduels.unranked
   duels:
     description: GrandDuels administration
     usage: /<command> <arena|reload|savekit|setlobby|forceend>

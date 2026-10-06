@@ -29,19 +29,26 @@ public final class SqliteStatsStorage implements StatsStorage {
             st.executeUpdate("CREATE TABLE IF NOT EXISTS duel_stats ("
                     + "uuid TEXT PRIMARY KEY, name TEXT NOT NULL, wins INTEGER NOT NULL, losses INTEGER NOT NULL, "
                     + "kills INTEGER NOT NULL, deaths INTEGER NOT NULL, streak INTEGER NOT NULL, "
-                    + "best_streak INTEGER NOT NULL)");
+                    + "best_streak INTEGER NOT NULL, elo INTEGER NOT NULL DEFAULT 1000)");
+        }
+        // Databases created by older versions miss the elo column.
+        try (Statement st = connection.createStatement()) {
+            st.executeUpdate("ALTER TABLE duel_stats ADD COLUMN elo INTEGER NOT NULL DEFAULT 1000");
+        } catch (SQLException e) {
+            String message = e.getMessage() == null ? "" : e.getMessage().toLowerCase(java.util.Locale.ROOT);
+            if (!message.contains("duplicate column")) throw e;
         }
     }
 
     @Override
     public Optional<PlayerStats> load(UUID uuid) throws SQLException {
         try (PreparedStatement ps = connection.prepareStatement(
-                "SELECT name, wins, losses, kills, deaths, streak, best_streak FROM duel_stats WHERE uuid = ?")) {
+                "SELECT name, wins, losses, kills, deaths, streak, best_streak, elo FROM duel_stats WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
                 return Optional.of(new PlayerStats(uuid, rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getInt(4),
-                        rs.getInt(5), rs.getInt(6), rs.getInt(7)));
+                        rs.getInt(5), rs.getInt(6), rs.getInt(7), rs.getInt(8)));
             }
         }
     }
@@ -49,10 +56,11 @@ public final class SqliteStatsStorage implements StatsStorage {
     @Override
     public void save(PlayerStats s) throws SQLException {
         try (PreparedStatement ps = connection.prepareStatement(
-                "INSERT INTO duel_stats (uuid, name, wins, losses, kills, deaths, streak, best_streak) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(uuid) DO UPDATE SET name = excluded.name, "
+                "INSERT INTO duel_stats (uuid, name, wins, losses, kills, deaths, streak, best_streak, elo) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(uuid) DO UPDATE SET name = excluded.name, "
                         + "wins = excluded.wins, losses = excluded.losses, kills = excluded.kills, "
-                        + "deaths = excluded.deaths, streak = excluded.streak, best_streak = excluded.best_streak")) {
+                        + "deaths = excluded.deaths, streak = excluded.streak, best_streak = excluded.best_streak, "
+                        + "elo = excluded.elo")) {
             ps.setString(1, s.uuid().toString());
             ps.setString(2, s.name());
             ps.setInt(3, s.wins());
@@ -61,6 +69,7 @@ public final class SqliteStatsStorage implements StatsStorage {
             ps.setInt(6, s.deaths());
             ps.setInt(7, s.currentStreak());
             ps.setInt(8, s.bestStreak());
+            ps.setInt(9, s.elo());
             ps.executeUpdate();
         }
     }

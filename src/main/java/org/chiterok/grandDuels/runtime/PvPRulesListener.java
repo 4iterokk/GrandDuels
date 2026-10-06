@@ -1,5 +1,6 @@
 package org.chiterok.grandDuels.runtime;
 
+import com.destroystokyo.paper.event.player.PlayerElytraBoostEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
@@ -19,7 +20,7 @@ import org.bukkit.event.player.PlayerRiptideEvent;
 import org.bukkit.inventory.ItemStack;
 import org.chiterok.grandDuels.GrandDuels;
 import org.chiterok.grandDuels.config.Settings;
-import org.chiterok.grandDuels.cooldown.CooldownType;
+import org.chiterok.grandDuels.cooldown.RuleType;
 import org.chiterok.grandDuels.match.Match;
 
 /** Stateful duel rules: item cooldowns, gapple toggle, riptide restriction and heavy-weapon tuning. */
@@ -38,7 +39,7 @@ public final class PvPRulesListener implements Listener {
         Player player = event.getPlayer();
         Match match = plugin.matches().of(player);
         if (match == null) return;
-        CooldownType type = CooldownType.forConsumable(event.getItem().getType());
+        RuleType type = RuleType.forConsumable(event.getItem().getType());
         if (type == null || denyIfBanned(player, match, type, event)) return;
         enforceCooldown(player, match, type, event);
     }
@@ -48,7 +49,7 @@ public final class PvPRulesListener implements Listener {
         if (!(event.getEntity().getShooter() instanceof Player player)) return;
         Match match = plugin.matches().of(player);
         if (match == null) return;
-        CooldownType type = CooldownType.forProjectile(event.getEntityType());
+        RuleType type = RuleType.forProjectile(event.getEntityType());
         if (type == null || denyIfBanned(player, match, type, event)) return;
         enforceCooldown(player, match, type, event);
     }
@@ -58,12 +59,12 @@ public final class PvPRulesListener implements Listener {
         Player player = event.getPlayer();
         Match match = plugin.matches().of(player);
         if (match != null && match.usesCustomCooldowns()) {
-            plugin.cooldowns().apply(player, CooldownType.TRIDENT, match.settings().cooldownSeconds(CooldownType.TRIDENT));
+            plugin.cooldowns().apply(player, RuleType.TRIDENT, match.settings().cooldownSeconds(RuleType.TRIDENT));
         }
     }
 
     /** @return true if the item is banned in this duel (the event is cancelled and the player informed). */
-    private boolean denyIfBanned(Player player, Match match, CooldownType type, Cancellable event) {
+    private boolean denyIfBanned(Player player, Match match, RuleType type, Cancellable event) {
         if (!match.settings().isBanned(type)) return false;
         event.setCancelled(true);
         plugin.messages().actionBar(player, "duels.item-banned");
@@ -71,7 +72,7 @@ public final class PvPRulesListener implements Listener {
     }
 
     /** Cancels the use while on cooldown, otherwise starts the duel's cooldown for this item. */
-    private void enforceCooldown(Player player, Match match, CooldownType type, Cancellable event) {
+    private void enforceCooldown(Player player, Match match, RuleType type, Cancellable event) {
         if (!match.usesCustomCooldowns()) return;
         if (plugin.cooldowns().isOnCooldown(player, type)) {
             event.setCancelled(true);
@@ -81,19 +82,44 @@ public final class PvPRulesListener implements Listener {
         plugin.cooldowns().apply(player, type, match.settings().cooldownSeconds(type));
     }
 
-    /** Right-click with a Riptide trident would launch the player; deny it when riptide is disabled. */
+    /**
+     * Right-click handling: a Riptide trident would launch the player (RIPTIDE ban), and fireworks used on the ground
+     * are covered by the FIREWORK_ROCKET ban/cooldown. (Gliding boosts are handled by {@link #onElytraBoost}.)
+     */
     @EventHandler(priority = EventPriority.HIGH)
     public void onInteract(PlayerInteractEvent event) {
-        if (plugin.settings().rules().riptideEnabled()) return;
         Action action = event.getAction();
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
         Player player = event.getPlayer();
-        if (plugin.matches().of(player) == null) return;
+        Match match = plugin.matches().of(player);
         ItemStack item = event.getItem();
-        if (item == null || item.getType() != Material.TRIDENT || !item.containsEnchantment(Enchantment.RIPTIDE)) return;
-        event.setUseItemInHand(Event.Result.DENY);
-        event.setCancelled(true);
-        plugin.messages().actionBar(player, "duels.riptide-blocked");
+        if (match == null || item == null) return;
+
+        if (item.getType() == Material.TRIDENT && item.containsEnchantment(Enchantment.RIPTIDE)
+                && match.settings().isBanned(RuleType.RIPTIDE)) {
+            event.setUseItemInHand(Event.Result.DENY);
+            event.setCancelled(true);
+            plugin.messages().actionBar(player, "duels.riptide-blocked");
+            return;
+        }
+        if (item.getType() == Material.FIREWORK_ROCKET) {
+            if (match.settings().isBanned(RuleType.FIREWORK_ROCKET)) {
+                event.setUseItemInHand(Event.Result.DENY);
+                event.setCancelled(true);
+                plugin.messages().actionBar(player, "duels.item-banned");
+            } else if (action == Action.RIGHT_CLICK_BLOCK && !player.isGliding()) {
+                enforceCooldown(player, match, RuleType.FIREWORK_ROCKET, event);
+            }
+        }
+    }
+
+    /** Elytra boost with a firework: banned or on cooldown -> cancelled, otherwise starts the cooldown. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onElytraBoost(PlayerElytraBoostEvent event) {
+        Player player = event.getPlayer();
+        Match match = plugin.matches().of(player);
+        if (match == null || denyIfBanned(player, match, RuleType.FIREWORK_ROCKET, event)) return;
+        enforceCooldown(player, match, RuleType.FIREWORK_ROCKET, event);
     }
 
     /** Mace smash and spear charge tuning: optional damage cap and knockback multiplier. */

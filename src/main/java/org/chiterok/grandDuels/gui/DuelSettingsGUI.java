@@ -23,16 +23,19 @@ public final class DuelSettingsGUI extends GuiHolder {
     private final String targetName;
     private final Kit kit;
     private final int returnPage;
+    private final KitSelectorGUI.Source source;
     private MatchSettings settings;
     private Map<Integer, String> actions = Map.of();
 
-    public DuelSettingsGUI(GrandDuels plugin, Player viewer, Player target, Kit kit, int returnPage) {
+    public DuelSettingsGUI(GrandDuels plugin, Player viewer, Player target, Kit kit, int returnPage,
+                           KitSelectorGUI.Source source) {
         super(plugin, viewer);
         this.targetId = target.getUniqueId();
         this.targetName = target.getName();
         this.kit = kit;
         this.returnPage = returnPage;
-        this.settings = plugin.preferences().get(viewer.getUniqueId()).toSettings(plugin.settings());
+        this.source = source;
+        this.settings = plugin.preferences().get(viewer.getUniqueId()).toSettings(plugin.menus().defaults());
     }
 
     @Override
@@ -49,7 +52,6 @@ public final class DuelSettingsGUI extends GuiHolder {
 
     private void refresh(MenuDefinition def) {
         Set<String> flags = new HashSet<>();
-        if (settings.allowGapples()) flags.add("gapples");
         if (settings.customCooldowns()) flags.add("cooldowns");
         this.actions = render(def, flags, placeholders()).actions();
     }
@@ -60,17 +62,13 @@ public final class DuelSettingsGUI extends GuiHolder {
         if (action == null) return;
         MenuDefinition def = plugin.menus().get(MenuManager.DUEL_SETTINGS);
         switch (action.toUpperCase(Locale.ROOT)) {
-            case "TOGGLE_GAPPLES" -> {
-                settings = settings.withGapples(!settings.allowGapples());
-                refresh(def);
-            }
             case "TOGGLE_COOLDOWNS" -> {
                 settings = settings.withCustomCooldowns(!settings.customCooldowns());
                 refresh(def);
             }
             case "OPEN_COOLDOWNS" -> new CooldownMenuGUI(plugin, viewer, () -> {
                 Player target = plugin.getServer().getPlayer(targetId);
-                if (target != null) new DuelSettingsGUI(plugin, viewer, target, kit, returnPage).open();
+                if (target != null) new DuelSettingsGUI(plugin, viewer, target, kit, returnPage, source).open();
             }).open();
             case "SEND" -> {
                 Player target = plugin.getServer().getPlayer(targetId);
@@ -87,7 +85,7 @@ public final class DuelSettingsGUI extends GuiHolder {
                     viewer.closeInventory();
                     return;
                 }
-                new KitSelectorGUI(plugin, viewer, target, returnPage).open();
+                new KitSelectorGUI(plugin, viewer, target, returnPage, source).open();
             }
             case "CLOSE" -> viewer.closeInventory();
             default -> { /* unknown action ids are ignored */ }
