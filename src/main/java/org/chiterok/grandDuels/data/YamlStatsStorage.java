@@ -5,6 +5,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +34,25 @@ public final class YamlStatsStorage implements StatsStorage {
         return Optional.of(new PlayerStats(uuid, s.getString("name", "unknown"), s.getInt("wins"), s.getInt("losses"),
                 s.getInt("kills"), s.getInt("deaths"), s.getInt("streak"), s.getInt("best-streak"),
                 s.getInt("elo", PlayerStats.DEFAULT_ELO)));
+    }
+
+    @Override
+    public synchronized List<PlayerStats> top(int limit) {
+        List<PlayerStats> all = new ArrayList<>();
+        ConfigurationSection players = yaml.getConfigurationSection("players");
+        if (players != null) {
+            for (String key : players.getKeys(false)) {
+                try {
+                    load(UUID.fromString(key)).ifPresent(all::add);
+                } catch (IllegalArgumentException ignored) {
+                    // not a UUID key
+                }
+            }
+        }
+        all.sort(Comparator.comparingInt(PlayerStats::elo).reversed()
+                .thenComparing(Comparator.comparingInt(PlayerStats::wins).reversed())
+                .thenComparing(PlayerStats::name, String.CASE_INSENSITIVE_ORDER));
+        return new ArrayList<>(all.subList(0, Math.min(Math.max(1, limit), all.size())));
     }
 
     @Override

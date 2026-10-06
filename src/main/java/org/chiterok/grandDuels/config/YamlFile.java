@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.logging.Level;
 
 import org.jetbrains.annotations.Nullable;
@@ -28,15 +29,33 @@ public final class YamlFile {
     private final String name;
     private final Mode mode;
     private final File file;
+    private final @Nullable String fallbackResource;
     private volatile YamlConfiguration yaml;
 
     public YamlFile(JavaPlugin plugin, String name, Mode mode) {
+        this(plugin, name, null, mode);
+    }
+
+    /**
+     * @param name             path relative to the data folder; the jar resource with the same path is the default
+     * @param fallbackResource jar resource used when {@code name} is not bundled in the jar (e.g. a language an admin
+     *                         added by hand), or {@code null}
+     */
+    public YamlFile(JavaPlugin plugin, String name, @Nullable String fallbackResource, Mode mode) {
         this.plugin = plugin;
         this.name = name;
         this.mode = mode;
+        this.fallbackResource = fallbackResource;
         this.file = new File(plugin.getDataFolder(), name);
         ensureExists();
         reload();
+    }
+
+    /** Name of the jar resource that supplies the defaults of this file, or {@code null} if there is none. */
+    private @Nullable String defaultsResource() {
+        if (plugin.getResource(name) != null) return name;
+        if (fallbackResource != null && plugin.getResource(fallbackResource) != null) return fallbackResource;
+        return null;
     }
 
     private void ensureExists() {
@@ -52,7 +71,25 @@ public final class YamlFile {
                 plugin.getLogger().log(Level.SEVERE, "Could not create " + file, e);
             }
         } else {
-            plugin.saveResource(name, false);
+            copyDefaults();
+        }
+    }
+
+    private void copyDefaults() {
+        String resource = defaultsResource();
+        if (resource == null) {
+            plugin.getLogger().warning("No bundled default for " + name);
+            return;
+        }
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            plugin.getLogger().warning("Could not create " + parent);
+            return;
+        }
+        try (InputStream in = plugin.getResource(resource)) {
+            if (in != null) Files.copy(in, file.toPath());
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.SEVERE, "Could not create " + file, e);
         }
     }
 
@@ -76,7 +113,9 @@ public final class YamlFile {
     }
 
     private @Nullable YamlConfiguration readDefaults() {
-        try (InputStream in = plugin.getResource(name)) {
+        String resource = defaultsResource();
+        if (resource == null) return null;
+        try (InputStream in = plugin.getResource(resource)) {
             if (in == null) return null;
             return YamlConfiguration.loadConfiguration(new InputStreamReader(in, StandardCharsets.UTF_8));
         } catch (IOException e) {

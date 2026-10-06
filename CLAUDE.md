@@ -65,7 +65,7 @@ Implement an isolated `PvPCooldownManager` and event listener handling stateful 
     - `/duel deny [player]` - Deny request.
     - `/duel cancel` - Cancel sent request.
     - `/duel stats [player]` - View player duel statistics.
-    - `/duels <arena|reload|savekit> <arena:createarena|setspawn1|setspawn2>` - Admin operations.
+    - `/duels <arena|reload|kit> <arena:createarena|setspawn1|setspawn2>` - Admin operations.
 - **Interactive GUIs:**
     - **Kit Selector GUI:** Paginated or clean inventory layout showing available kits with custom icons, lore, and component indicators.
     - **Duel Settings / Request GUI:** Optionally toggle sub-rules (e.g., "Allow Gapples: ON/OFF", "Custom Cooldowns: ON/OFF").

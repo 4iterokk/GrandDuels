@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-/** {@code /duels <arena|kit|reload|setlobby|forceend>} */
+/** {@code /duels <arena|kit|reload|setlobby|setarenaspawn|forceend>} */
 public final class DuelsCommand implements TabExecutor {
 
     private final GrandDuels plugin;
@@ -24,6 +24,7 @@ public final class DuelsCommand implements TabExecutor {
                 .register(new Reload(plugin))
                 .register(new KitCommand(plugin))
                 .register(new SetLobby(plugin))
+                .register(new SetArenaSpawn(plugin))
                 .register(new ForceEnd(plugin));
     }
 

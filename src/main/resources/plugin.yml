@@ -3,6 +3,7 @@ version: '${project.version}'
 main: org.chiterok.grandDuels.GrandDuels
 api-version: '1.21.11'
 load: POSTWORLD
+softdepend: [PlaceholderAPI]
 authors: [chiterok]
 description: Modern 1v1 dueling for Paper 1.21+ with data-component kits, PvP cooldowns and arena rollback.
 
@@ -13,18 +14,20 @@ commands:
     aliases: [1v1, challenge]
     permission: grandduels.duel
   ranked:
-    description: Challenge a player or manage duel requests
-    usage: /<command> <player|accept|deny|cancel|stats>
-    aliases: [ 1v1, challenge ]
+    description: Open the ranked queue menu
+    usage: /<command>
     permission: grandduels.ranked
   unranked:
-    description: Challenge a player or manage duel requests
-    usage: /<command> <player|accept|deny|cancel|stats>
-    aliases: [ 1v1, challenge ]
+    description: Open the unranked queue menu
+    usage: /<command>
     permission: grandduels.unranked
+  arena:
+    description: Join the arena with a kit, or leave it
+    usage: /<command> [leave]
+    permission: grandduels.arena
   duels:
     description: GrandDuels administration
-    usage: /<command> <arena|reload|savekit|setlobby|forceend>
+    usage: /<command> <arena|kit|reload|setlobby|setarenaspawn|forceend>
     aliases: [gduels, grandduels]
     permission: grandduels.admin
 
@@ -35,6 +38,24 @@ permissions:
   grandduels.stats:
     description: View duel statistics
     default: true
+  grandduels.ranked:
+    description: Use the ranked queue
+    default: true
+  grandduels.unranked:
+    description: Use the unranked queue
+    default: true
+  grandduels.queue:
+    description: Leave the queue with /duel leave
+    default: true
+  grandduels.arena:
+    description: Use arena mode (/arena)
+    default: true
+  grandduels.kits:
+    description: Create and edit your own kits (/duel kit)
+    default: true
+  grandduels.kits.unlimited:
+    description: No limit on the number of own kits
+    default: op
   grandduels.admin:
     description: Manage arenas, kits and plugin state
     default: op

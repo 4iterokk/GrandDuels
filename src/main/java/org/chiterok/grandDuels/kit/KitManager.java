@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 /** Loads kits from kits.yml and saves kits from a player's current loadout. */
@@ -157,6 +158,12 @@ public final class KitManager {
      * @return the number of skipped items
      */
     public int writeLoadout(ConfigurationSection kit, Player player, boolean includeEffects, Set<Material> excluded) {
+        return writeLoadout(kit, player, includeEffects, item -> excluded.contains(item.getType()));
+    }
+
+    /** Same as above, but every item for which {@code rejected} returns true is skipped. */
+    public int writeLoadout(ConfigurationSection kit, Player player, boolean includeEffects,
+                            Predicate<ItemStack> rejected) {
         kit.set("items", null);
         kit.set("armor", null);
         kit.set("offhand", null);
@@ -167,19 +174,19 @@ public final class KitManager {
         for (int slot = 0; slot < 36; slot++) {
             ItemStack item = inventory.getItem(slot);
             if (isEmpty(item)) continue;
-            if (excluded.contains(item.getType())) {
+            if (rejected.test(item)) {
                 skipped++;
                 continue;
             }
             codec.encode(kit.createSection("items." + slot), item);
         }
-        skipped += writeArmor(kit, "helmet", inventory.getHelmet(), excluded);
-        skipped += writeArmor(kit, "chestplate", inventory.getChestplate(), excluded);
-        skipped += writeArmor(kit, "leggings", inventory.getLeggings(), excluded);
-        skipped += writeArmor(kit, "boots", inventory.getBoots(), excluded);
+        skipped += writeArmor(kit, "helmet", inventory.getHelmet(), rejected);
+        skipped += writeArmor(kit, "chestplate", inventory.getChestplate(), rejected);
+        skipped += writeArmor(kit, "leggings", inventory.getLeggings(), rejected);
+        skipped += writeArmor(kit, "boots", inventory.getBoots(), rejected);
         ItemStack offhand = inventory.getItemInOffHand();
         if (!isEmpty(offhand)) {
-            if (excluded.contains(offhand.getType())) skipped++;
+            if (rejected.test(offhand)) skipped++;
             else codec.encode(kit.createSection("offhand"), offhand);
         }
 
@@ -208,12 +215,14 @@ public final class KitManager {
         plugin.configs().kits().set("kits." + key, null);
         plugin.configs().kitsFile().save();
         reload();
+        plugin.arenas().clearRestriction(id);
         return true;
     }
 
-    private int writeArmor(ConfigurationSection kit, String slot, @Nullable ItemStack item, Set<Material> excluded) {
+    private int writeArmor(ConfigurationSection kit, String slot, @Nullable ItemStack item,
+                           Predicate<ItemStack> rejected) {
         if (isEmpty(item)) return 0;
-        if (excluded.contains(item.getType())) return 1;
+        if (rejected.test(item)) return 1;
         codec.encode(kit.createSection("armor." + slot), item);
         return 0;
     }

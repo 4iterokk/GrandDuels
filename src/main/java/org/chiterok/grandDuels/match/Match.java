@@ -156,7 +156,7 @@ public final class Match {
 
         for (Player p : List.of(first, second)) {
             Player other = p == first ? second : first;
-            plugin.messages().send(p, "duels.starting", "opponent", other.getName(), "arena", arena.name(),
+            plugin.messages().send(p, "duels.starting", "opponent", other.getName(), "arena", arena.displayName(),
                     "kit", kit.displayName());
         }
         startCountdown();
@@ -448,7 +448,7 @@ public final class Match {
     private Map<String, String> placeholders() {
         Player p1 = Bukkit.getPlayer(id1);
         Player p2 = Bukkit.getPlayer(id2);
-        return Messages.ph("kit", kit.displayName(), "arena", arena.name(), "time", TimeUtil.mmss(elapsedSeconds),
+        return Messages.ph("kit", kit.displayName(), "arena", arena.displayName(), "time", TimeUtil.mmss(elapsedSeconds),
                 "mode", plugin.messages().string("modes." + mode.name().toLowerCase(Locale.ROOT)),
                 "player1", name1, "health1", p1 == null ? "0" : hearts(p1),
                 "player2", name2, "health2", p2 == null ? "0" : hearts(p2));

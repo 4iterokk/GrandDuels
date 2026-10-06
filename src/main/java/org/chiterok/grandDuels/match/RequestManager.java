@@ -1,15 +1,19 @@
 package org.chiterok.grandDuels.match;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 import org.chiterok.grandDuels.GrandDuels;
+import org.chiterok.grandDuels.arena.Arena;
 import org.chiterok.grandDuels.config.Messages;
 import org.chiterok.grandDuels.cooldown.RuleType;
 import org.chiterok.grandDuels.kit.Kit;
+import org.chiterok.grandDuels.utils.ColorUtil;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,54 +34,89 @@ public final class RequestManager {
         this.plugin = plugin;
     }
 
-    public SendResult send(Player sender, Player target, Kit kit, MatchSettings settings) {
+    public SendResult send(Player sender, Player target, Kit kit, MatchSettings settings, @Nullable String arenaId) {
         if (bySender.containsKey(sender.getUniqueId())) return SendResult.ALREADY_PENDING;
 
         int seconds = plugin.settings().duel().requestExpireSeconds();
         UUID senderId = sender.getUniqueId();
         BukkitTask expiry = Bukkit.getScheduler().runTaskLater(plugin, () -> expire(senderId), seconds * 20L);
         DuelRequest request = new DuelRequest(senderId, sender.getName(), target.getUniqueId(), target.getName(),
-                kit, settings, expiry);
+                kit, settings, arenaId, expiry);
         bySender.put(senderId, request);
 
         Messages messages = plugin.messages();
         messages.send(sender, "duels.request-sent", "target", target.getName(), "kit", kit.displayName(),
-                "seconds", seconds);
+                "arena", arenaName(arenaId), "seconds", seconds);
         target.sendMessage(requestComponent(request, kit, seconds));
         return SendResult.SENT;
     }
 
+    /** Display name of the chosen arena, or the localized "random" text. */
+    private String arenaName(@Nullable String arenaId) {
+        Arena arena = arenaId == null ? null : plugin.arenas().get(arenaId);
+        return arena == null ? plugin.messages().string("duels.arena-random") : arena.displayName();
+    }
+
+    /**
+     * The request line carries a hover with the complete rules of the duel: kit, arena, whether custom cooldowns are
+     * on, and the cooldown / ban of every rule. The accept and deny buttons keep their own hover texts.
+     */
     private Component requestComponent(DuelRequest request, Kit kit, int seconds) {
         Messages m = plugin.messages();
-        Component text = m.prefixed("duels.request-received", Messages.ph(
+        Map<String, String> ph = Messages.ph(
                 "sender", request.senderName(), "kit", kit.displayName(), "seconds", seconds,
-                "cooldowns", plainState(request.settings().customCooldowns())));
+                "arena", arenaName(request.arena()),
+                "cooldowns", plainState(request.settings().customCooldowns()));
+        Component text = m.prefixed("duels.request-received", ph)
+                .hoverEvent(HoverEvent.showText(rulesHover(request.settings(), ph)));
         Component accept = m.get("duels.request-accept-button")
                 .clickEvent(ClickEvent.runCommand("/duel accept " + request.senderName()))
                 .hoverEvent(HoverEvent.showText(m.get("duels.request-accept-hover")));
         Component deny = m.get("duels.request-deny-button")
                 .clickEvent(ClickEvent.runCommand("/duel deny " + request.senderName()))
                 .hoverEvent(HoverEvent.showText(m.get("duels.request-deny-hover")));
-        Component details = m.prefixed("duels.request-details", Messages.ph("details", describe(request.settings())));
-        return text.append(Component.newline()).append(details).append(Component.newline())
+        return Component.empty().append(text).append(Component.newline())
                 .append(accept).append(Component.space()).append(deny);
     }
 
-    /** Human readable summary of cooldowns and bans, e.g. "Ender Pearl 15s, Wind Charge banned". */
-    private String describe(MatchSettings settings) {
-        List<String> parts = new ArrayList<>();
-        for (RuleType type : RuleType.values()) {
-            String name = plugin.messages().string("cooldown-names." + type.configKey());
-            if (settings.isBanned(type)) {
-                parts.add(name + " " + plugin.messages().string("duels.banned-word"));
-            } else if (settings.customCooldowns() && settings.cooldownSeconds(type) > 0.0) {
-                double seconds = settings.cooldownSeconds(type);
-                String value = seconds == Math.rint(seconds) ? String.valueOf((long) seconds)
-                        : String.format(java.util.Locale.ROOT, "%.1f", seconds);
-                parts.add(name + " " + value + "s");
+    /** {@code duels.request-hover} with its {@code {rules}} line replaced by one line per rule. */
+    private Component rulesHover(MatchSettings settings, Map<String, String> ph) {
+        List<Component> lines = new ArrayList<>();
+        for (String template : plugin.messages().stringList("duels.request-hover")) {
+            if (template.trim().equals("{rules}")) {
+                lines.addAll(ruleLines(settings));
+            } else {
+                lines.add(ColorUtil.colorize(template, ph));
             }
         }
-        return parts.isEmpty() ? plugin.messages().string("duels.no-rules-word") : String.join(", ", parts);
+        return Component.join(JoinConfiguration.newlines(), lines);
+    }
+
+    /** One line per {@link RuleType}: its cooldown, "banned", "no limits" or "vanilla" (custom cooldowns off). */
+    private List<Component> ruleLines(MatchSettings settings) {
+        List<Component> lines = new ArrayList<>();
+        for (RuleType type : RuleType.values()) {
+            String name = plugin.messages().string("cooldown-names." + type.configKey());
+            String template;
+            Map<String, String> ph = new java.util.HashMap<>();
+            ph.put("rule", name);
+            if (settings.isBanned(type)) {
+                template = "duels.rule-banned";
+            } else if (!type.hasCooldown()) {
+                template = "duels.rule-allowed";
+            } else if (!settings.customCooldowns()) {
+                template = "duels.rule-vanilla";
+            } else if (settings.cooldownSeconds(type) > 0.0) {
+                double seconds = settings.cooldownSeconds(type);
+                ph.put("seconds", seconds == Math.rint(seconds) ? String.valueOf((long) seconds)
+                        : String.format(java.util.Locale.ROOT, "%.1f", seconds));
+                template = "duels.rule-cooldown";
+            } else {
+                template = "duels.rule-allowed";
+            }
+            lines.add(plugin.messages().get(template, ph));
+        }
+        return lines;
     }
 
     private String plainState(boolean on) {

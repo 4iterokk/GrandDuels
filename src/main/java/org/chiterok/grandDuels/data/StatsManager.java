@@ -6,6 +6,7 @@ import org.chiterok.grandDuels.GrandDuels;
 import org.chiterok.grandDuels.config.Settings;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -13,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.bukkit.scheduler.BukkitTask;
 import java.util.function.UnaryOperator;
 import java.util.logging.Level;
 
@@ -22,10 +24,24 @@ import java.util.logging.Level;
  */
 public final class StatsManager {
 
+    /** How many players the cached leaderboard ({@link #top()}) holds. */
+    public static final int TOP_SIZE = 100;
+
+    private static final long TOP_REFRESH_TICKS = 30L * 20L;
+    private static final long OFFLINE_TTL_MILLIS = 30_000L;
+    private static final int OFFLINE_CACHE_LIMIT = 256;
+
+    private record Cached(PlayerStats stats, long loadedAt) {}
+
     private final GrandDuels plugin;
     private final ConcurrentHashMap<UUID, PlayerStats> cache = new ConcurrentHashMap<>();
+    /** Stats of players who are not online, loaded on demand for placeholders (short lived). */
+    private final ConcurrentHashMap<UUID, Cached> offlineCache = new ConcurrentHashMap<>();
+    private final java.util.Set<UUID> offlineLoading = ConcurrentHashMap.newKeySet();
+    private volatile List<PlayerStats> top = List.of();
     private ExecutorService executor;
     private StatsStorage storage;
+    private BukkitTask topTask;
 
     public StatsManager(GrandDuels plugin) {
         this.plugin = plugin;
@@ -54,9 +70,12 @@ public final class StatsManager {
             t.setDaemon(true);
             return t;
         });
+        refreshTop();
+        this.topTask = Bukkit.getScheduler().runTaskTimer(plugin, this::refreshTop, TOP_REFRESH_TICKS, TOP_REFRESH_TICKS);
     }
 
     public void stop() {
+        if (topTask != null) topTask.cancel();
         if (executor != null) {
             executor.shutdown();
             try {
@@ -120,6 +139,7 @@ public final class StatsManager {
                 storage.save(l2);
                 cache.put(winnerId, w2);
                 cache.put(loserId, l2);
+                if (ranked) reloadTop();
                 result.complete(gain);
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Could not record duel result", e);
@@ -133,6 +153,56 @@ public final class StatsManager {
         PlayerStats current = cache.get(uuid);
         if (current == null) current = storage.load(uuid).orElseGet(() -> PlayerStats.empty(uuid, name));
         return current.withName(name);
+    }
+
+    // ---------------------------------------------------------------- leaderboard and placeholder support
+
+    /** Players with the highest ELO, best first (at most {@link #TOP_SIZE}); refreshed every 30 seconds and after ranked duels. */
+    public List<PlayerStats> top() {
+        return top;
+    }
+
+    /** Queues a leaderboard reload on the storage thread. Safe to call from any thread. */
+    public void refreshTop() {
+        if (executor == null || storage == null || executor.isShutdown()) return;
+        executor.execute(this::reloadTop);
+    }
+
+    /** Storage thread only. */
+    private void reloadTop() {
+        try {
+            this.top = List.copyOf(storage.top(TOP_SIZE));
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Could not load the ELO leaderboard", e);
+        }
+    }
+
+    /**
+     * Non-blocking stats read for placeholders: the live cache for online players; for everybody else the last loaded
+     * copy (a background load is started when it is missing or older than 30 seconds).
+     * @return {@code null} until the first load of an offline player has finished
+     */
+    public @Nullable PlayerStats peek(UUID uuid) {
+        PlayerStats online = cache.get(uuid);
+        if (online != null) return online;
+        Cached cached = offlineCache.get(uuid);
+        if (cached == null || System.currentTimeMillis() - cached.loadedAt() > OFFLINE_TTL_MILLIS) loadOffline(uuid);
+        return cached == null ? null : cached.stats();
+    }
+
+    private void loadOffline(UUID uuid) {
+        if (!offlineLoading.add(uuid)) return;
+        lookup(uuid).whenComplete((result, error) -> {
+            try {
+                if (error == null) {
+                    if (offlineCache.size() >= OFFLINE_CACHE_LIMIT) offlineCache.clear();
+                    offlineCache.put(uuid, new Cached(result.orElseGet(() -> PlayerStats.empty(uuid, "")),
+                            System.currentTimeMillis()));
+                }
+            } finally {
+                offlineLoading.remove(uuid);
+            }
+        });
     }
 
     /** Looks up stats of any player (online or not) without blocking the main thread. */

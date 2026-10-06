@@ -7,6 +7,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.chiterok.grandDuels.arena.ArenaManager;
 import org.chiterok.grandDuels.command.admin.DuelsCommand;
+import org.chiterok.grandDuels.command.player.ArenaModeCommand;
 import org.chiterok.grandDuels.command.player.DuelCommand;
 import org.chiterok.grandDuels.command.player.QueueCommand;
 import org.chiterok.grandDuels.config.ConfigManager;
@@ -20,16 +21,22 @@ import org.chiterok.grandDuels.gui.MenuManager;
 import org.chiterok.grandDuels.kit.KitEditManager;
 import org.chiterok.grandDuels.kit.KitManager;
 import org.chiterok.grandDuels.kit.PlayerKitManager;
+import org.chiterok.grandDuels.match.ArenaModeManager;
 import org.chiterok.grandDuels.match.DuelMode;
 import org.chiterok.grandDuels.match.DuelService;
 import org.chiterok.grandDuels.match.MatchManager;
 import org.chiterok.grandDuels.match.QueueManager;
 import org.chiterok.grandDuels.match.RequestManager;
+import org.chiterok.grandDuels.runtime.ArenaModeListener;
 import org.chiterok.grandDuels.runtime.ArenaProtectionListener;
 import org.chiterok.grandDuels.runtime.CombatRestrictionListener;
 import org.chiterok.grandDuels.runtime.GuiListener;
+import org.chiterok.grandDuels.runtime.KitEditorListener;
 import org.chiterok.grandDuels.runtime.MatchListener;
 import org.chiterok.grandDuels.runtime.PvPRulesListener;
+import org.chiterok.grandDuels.utils.PlaceholderUtil;
+
+import java.util.UUID;
 
 /** Composition root: builds every service once and exposes them to the rest of the plugin. */
 public final class GrandDuels extends JavaPlugin {
@@ -48,7 +55,9 @@ public final class GrandDuels extends JavaPlugin {
     private StatsManager stats;
     private RequestManager requests;
     private MatchManager matches;
+    private ArenaModeManager arenaMode;
     private DuelService duels;
+    private PlaceholderUtil placeholders;
 
     @Override
     public void onEnable() {
@@ -66,6 +75,7 @@ public final class GrandDuels extends JavaPlugin {
         this.stats = new StatsManager(this);
         this.requests = new RequestManager(this);
         this.matches = new MatchManager(this);
+        this.arenaMode = new ArenaModeManager(this);
         this.duels = new DuelService(this);
 
         arenas.load();
@@ -75,11 +85,15 @@ public final class GrandDuels extends JavaPlugin {
         queues.start();
 
         registerListeners(new GuiListener(), new PvPRulesListener(this), new CombatRestrictionListener(this),
-                new ArenaProtectionListener(this), new MatchListener(this));
+                new ArenaProtectionListener(this), new MatchListener(this), new KitEditorListener(this),
+                new ArenaModeListener(this));
         registerCommand("duel", new DuelCommand(this));
         registerCommand("duels", new DuelsCommand(this));
+        registerCommand("arena", new ArenaModeCommand(this));
         registerExecutor("ranked", new QueueCommand(this, DuelMode.RANKED));
         registerExecutor("unranked", new QueueCommand(this, DuelMode.UNRANKED));
+
+        hookPlaceholderApi();
 
         // /reload or late enable: players are already online
         for (Player online : Bukkit.getOnlinePlayers()) {
@@ -92,14 +106,36 @@ public final class GrandDuels extends JavaPlugin {
     @Override
     public void onDisable() {
         if (queues != null) queues.stop();
+        if (placeholders != null) placeholders.stop();
         if (kitEdits != null) kitEdits.shutdown();
+        if (arenaMode != null) arenaMode.shutdown();
         if (matches != null) matches.shutdown();
         if (preferences != null) preferences.saveNow();
         if (requests != null) requests.clear();
         if (stats != null) stats.stop();
     }
 
-    /** Reloads config.yml, messages.yml, kits.yml and menu/*.yml. Storage type changes need a restart. */
+    /** Registers the %grandduels_...% placeholders when PlaceholderAPI is installed (it is a soft dependency). */
+    private void hookPlaceholderApi() {
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") == null) return;
+        try {
+            this.placeholders = new PlaceholderUtil(this);
+            if (placeholders.start()) getLogger().info("PlaceholderAPI found: %grandduels_...% placeholders registered.");
+        } catch (LinkageError e) {
+            this.placeholders = null;
+            getLogger().warning("PlaceholderAPI is present but incompatible, placeholders are disabled: " + e);
+        }
+    }
+
+    /**
+     * True while the player is bound to one of the plugin's modes (duel, kit editing, arena mode) and so cannot start
+     * another one.
+     */
+    public boolean isOccupied(UUID playerId) {
+        return matches.isInMatch(playerId) || kitEdits.isEditing(playerId) || arenaMode.isIn(playerId);
+    }
+
+    /** Reloads config.yml, the language files (messages and menus), and kits.yml. Storage type changes need a restart. */
     public void reloadAll() {
         configs.reload();
         kits.reload();
@@ -187,6 +223,10 @@ public final class GrandDuels extends JavaPlugin {
 
     public MatchManager matches() {
         return matches;
+    }
+
+    public ArenaModeManager arenaMode() {
+        return arenaMode;
     }
 
     public DuelService duels() {

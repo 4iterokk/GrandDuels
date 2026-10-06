@@ -15,6 +15,7 @@ public final class Arena {
     private final ArenaRollback rollback = new ArenaRollback();
     private volatile StoredLocation pos1;
     private volatile StoredLocation pos2;
+    private volatile String displayName;
     private volatile ArenaState state = ArenaState.WAITING;
     private volatile BoundingBox activeBounds;
 
@@ -24,6 +25,21 @@ public final class Arena {
 
     public String name() {
         return name;
+    }
+
+    /** Custom name shown to players (scoreboard, messages, menus); the id when none is set. May contain color codes. */
+    public String displayName() {
+        String custom = displayName;
+        return custom == null || custom.isBlank() ? name : custom;
+    }
+
+    public boolean hasCustomName() {
+        String custom = displayName;
+        return custom != null && !custom.isBlank();
+    }
+
+    public void setDisplayName(@Nullable String displayName) {
+        this.displayName = displayName == null || displayName.isBlank() ? null : displayName;
     }
 
     public ArenaState state() {

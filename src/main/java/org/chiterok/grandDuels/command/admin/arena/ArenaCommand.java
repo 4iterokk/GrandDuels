@@ -7,7 +7,7 @@ import org.chiterok.grandDuels.command.SubCommand;
 
 import java.util.List;
 
-/** {@code /duels arena <create|delete|pos1|pos2> <name>} */
+/** {@code /duels arena <create|delete|pos1|pos2|setname|kits> ...} */
 public final class ArenaCommand implements SubCommand {
 
     private final GrandDuels plugin;
@@ -19,7 +19,9 @@ public final class ArenaCommand implements SubCommand {
                 .register(new Create(plugin))
                 .register(new Delete(plugin))
                 .register(new PosOne(plugin))
-                .register(new PosTwo(plugin));
+                .register(new PosTwo(plugin))
+                .register(new SetName(plugin))
+                .register(new Kits(plugin));
     }
 
     @Override

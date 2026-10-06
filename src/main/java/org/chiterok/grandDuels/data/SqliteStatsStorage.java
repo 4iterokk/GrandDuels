@@ -7,6 +7,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -51,6 +53,29 @@ public final class SqliteStatsStorage implements StatsStorage {
                         rs.getInt(5), rs.getInt(6), rs.getInt(7), rs.getInt(8)));
             }
         }
+    }
+
+    @Override
+    public List<PlayerStats> top(int limit) throws SQLException {
+        List<PlayerStats> list = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT uuid, name, wins, losses, kills, deaths, streak, best_streak, elo FROM duel_stats "
+                        + "ORDER BY elo DESC, wins DESC, name COLLATE NOCASE ASC LIMIT ?")) {
+            ps.setInt(1, Math.max(1, limit));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    UUID uuid;
+                    try {
+                        uuid = UUID.fromString(rs.getString(1));
+                    } catch (IllegalArgumentException e) {
+                        continue;
+                    }
+                    list.add(new PlayerStats(uuid, rs.getString(2), rs.getInt(3), rs.getInt(4), rs.getInt(5),
+                            rs.getInt(6), rs.getInt(7), rs.getInt(8), rs.getInt(9)));
+                }
+            }
+        }
+        return list;
     }
 
     @Override

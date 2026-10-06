@@ -22,6 +22,8 @@ import org.chiterok.grandDuels.GrandDuels;
 import org.chiterok.grandDuels.config.Settings;
 import org.chiterok.grandDuels.cooldown.RuleType;
 import org.chiterok.grandDuels.match.Match;
+import org.chiterok.grandDuels.match.MatchSettings;
+import org.jetbrains.annotations.Nullable;
 
 /** Stateful duel rules: item cooldowns, gapple toggle, riptide restriction and heavy-weapon tuning. */
 public final class PvPRulesListener implements Listener {
@@ -34,52 +36,61 @@ public final class PvPRulesListener implements Listener {
         this.plugin = plugin;
     }
 
+    /**
+     * The rules the player is currently bound to: those of their duel, or the server defaults in arena mode.
+     * {@code null} when neither applies (the player is not restricted at all).
+     */
+    private @Nullable MatchSettings rulesOf(Player player) {
+        Match match = plugin.matches().of(player);
+        return match != null ? match.settings() : plugin.arenaMode().rulesOf(player.getUniqueId());
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onConsume(PlayerItemConsumeEvent event) {
         Player player = event.getPlayer();
-        Match match = plugin.matches().of(player);
-        if (match == null) return;
+        MatchSettings rules = rulesOf(player);
+        if (rules == null) return;
         RuleType type = RuleType.forConsumable(event.getItem().getType());
-        if (type == null || denyIfBanned(player, match, type, event)) return;
-        enforceCooldown(player, match, type, event);
+        if (type == null || denyIfBanned(player, rules, type, event)) return;
+        enforceCooldown(player, rules, type, event);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onLaunch(ProjectileLaunchEvent event) {
         if (!(event.getEntity().getShooter() instanceof Player player)) return;
-        Match match = plugin.matches().of(player);
-        if (match == null) return;
+        MatchSettings rules = rulesOf(player);
+        if (rules == null) return;
         RuleType type = RuleType.forProjectile(event.getEntityType());
-        if (type == null || denyIfBanned(player, match, type, event)) return;
-        enforceCooldown(player, match, type, event);
+        if (type == null || denyIfBanned(player, rules, type, event)) return;
+        enforceCooldown(player, rules, type, event);
     }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onRiptide(PlayerRiptideEvent event) {
         Player player = event.getPlayer();
-        Match match = plugin.matches().of(player);
-        if (match != null && match.usesCustomCooldowns()) {
-            plugin.cooldowns().apply(player, RuleType.TRIDENT, match.settings().cooldownSeconds(RuleType.TRIDENT));
+        MatchSettings rules = rulesOf(player);
+        if (rules != null && rules.customCooldowns()) {
+            plugin.cooldowns().apply(player, RuleType.TRIDENT, rules.cooldownSeconds(RuleType.TRIDENT));
         }
     }
 
     /** @return true if the item is banned in this duel (the event is cancelled and the player informed). */
-    private boolean denyIfBanned(Player player, Match match, RuleType type, Cancellable event) {
-        if (!match.settings().isBanned(type)) return false;
+    private boolean denyIfBanned(Player player, MatchSettings rules, RuleType type, Cancellable event) {
+        if (!rules.isBanned(type)) return false;
         event.setCancelled(true);
         plugin.messages().actionBar(player, "duels.item-banned");
         return true;
     }
 
-    /** Cancels the use while on cooldown, otherwise starts the duel's cooldown for this item. */
-    private void enforceCooldown(Player player, Match match, RuleType type, Cancellable event) {
-        if (!match.usesCustomCooldowns()) return;
+    /** Cancels the use while on cooldown, otherwise starts the cooldown of this item. */
+    private void enforceCooldown(Player player, MatchSettings rules, RuleType type, Cancellable event) {
+        if (!rules.customCooldowns()) return;
         if (plugin.cooldowns().isOnCooldown(player, type)) {
             event.setCancelled(true);
             plugin.cooldowns().notifyBlocked(player, type);
             return;
         }
-        plugin.cooldowns().apply(player, type, match.settings().cooldownSeconds(type));
+        plugin.cooldowns().apply(player, type, rules.cooldownSeconds(type));
     }
 
     /**
@@ -91,24 +102,24 @@ public final class PvPRulesListener implements Listener {
         Action action = event.getAction();
         if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) return;
         Player player = event.getPlayer();
-        Match match = plugin.matches().of(player);
+        MatchSettings rules = rulesOf(player);
         ItemStack item = event.getItem();
-        if (match == null || item == null) return;
+        if (rules == null || item == null) return;
 
         if (item.getType() == Material.TRIDENT && item.containsEnchantment(Enchantment.RIPTIDE)
-                && match.settings().isBanned(RuleType.RIPTIDE)) {
+                && rules.isBanned(RuleType.RIPTIDE)) {
             event.setUseItemInHand(Event.Result.DENY);
             event.setCancelled(true);
             plugin.messages().actionBar(player, "duels.riptide-blocked");
             return;
         }
         if (item.getType() == Material.FIREWORK_ROCKET) {
-            if (match.settings().isBanned(RuleType.FIREWORK_ROCKET)) {
+            if (rules.isBanned(RuleType.FIREWORK_ROCKET)) {
                 event.setUseItemInHand(Event.Result.DENY);
                 event.setCancelled(true);
                 plugin.messages().actionBar(player, "duels.item-banned");
             } else if (action == Action.RIGHT_CLICK_BLOCK && !player.isGliding()) {
-                enforceCooldown(player, match, RuleType.FIREWORK_ROCKET, event);
+                enforceCooldown(player, rules, RuleType.FIREWORK_ROCKET, event);
             }
         }
     }
@@ -117,9 +128,9 @@ public final class PvPRulesListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onElytraBoost(PlayerElytraBoostEvent event) {
         Player player = event.getPlayer();
-        Match match = plugin.matches().of(player);
-        if (match == null || denyIfBanned(player, match, RuleType.FIREWORK_ROCKET, event)) return;
-        enforceCooldown(player, match, RuleType.FIREWORK_ROCKET, event);
+        MatchSettings rules = rulesOf(player);
+        if (rules == null || denyIfBanned(player, rules, RuleType.FIREWORK_ROCKET, event)) return;
+        enforceCooldown(player, rules, RuleType.FIREWORK_ROCKET, event);
     }
 
     /** Mace smash and spear charge tuning: optional damage cap and knockback multiplier. */
@@ -127,7 +138,8 @@ public final class PvPRulesListener implements Listener {
     public void onHeavyAttack(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Player attacker) || !(event.getEntity() instanceof Player victim)) return;
         Match match = plugin.matches().of(attacker);
-        if (match == null || !match.isFighting()) return;
+        boolean fighting = match != null ? match.isFighting() : plugin.arenaMode().isIn(attacker.getUniqueId());
+        if (!fighting) return;
 
         Material held = attacker.getInventory().getItemInMainHand().getType();
         Settings.WeaponRule rule;

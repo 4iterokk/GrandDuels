@@ -36,4 +36,8 @@ public record MatchSettings(boolean customCooldowns, Map<RuleType, Double> coold
     public MatchSettings withCustomCooldowns(boolean enabled) {
         return new MatchSettings(enabled, cooldowns, banned);
     }
+
+    public MatchSettings withBanned(Set<RuleType> newBanned) {
+        return new MatchSettings(customCooldowns, cooldowns, newBanned);
+    }
 }

@@ -3,6 +3,7 @@ package org.chiterok.grandDuels.match;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.chiterok.grandDuels.GrandDuels;
+import org.chiterok.grandDuels.arena.Arena;
 import org.chiterok.grandDuels.gui.KitSelectorGUI;
 import org.chiterok.grandDuels.kit.Kit;
 import org.jetbrains.annotations.Nullable;
@@ -33,12 +34,22 @@ public final class DuelService {
         }
         Kit kit = plugin.kits().get(plugin.settings().duel().defaultKit());
         if (kit == null) kit = plugin.kits().all().iterator().next();
-        sendRequest(sender, target, kit, plugin.preferences().get(sender.getUniqueId()).toSettings(plugin.menus().defaults()));
+        sendRequest(sender, target, kit, plugin.preferences().get(sender.getUniqueId()).toSettings(plugin.menus().defaults()),
+                null);
     }
 
-    public void sendRequest(Player sender, Player target, Kit kit, MatchSettings settings) {
+    /** @param arenaId the arena the sender picked, or {@code null} for any free one (checked against the kit) */
+    public void sendRequest(Player sender, Player target, Kit kit, MatchSettings settings, @Nullable String arenaId) {
         if (!validateParticipants(sender, target)) return;
-        if (plugin.requests().send(sender, target, kit, settings) == RequestManager.SendResult.ALREADY_PENDING) {
+        String arena = arenaId;
+        if (arena != null) {
+            Arena chosen = plugin.arenas().get(arena);
+            if (chosen == null || !chosen.isComplete() || !plugin.arenas().isAllowed(kit, chosen)) {
+                plugin.messages().send(sender, "arena.not-allowed", "arena", arena);
+                return;
+            }
+        }
+        if (plugin.requests().send(sender, target, kit, settings, arena) == RequestManager.SendResult.ALREADY_PENDING) {
             plugin.messages().send(sender, "duels.already-sent");
         }
     }
@@ -52,7 +63,11 @@ public final class DuelService {
             plugin.messages().send(sender, "kits.editing-busy");
             return false;
         }
-        if (plugin.kitEdits().isEditing(target.getUniqueId())) {
+        if (plugin.arenaMode().isIn(sender.getUniqueId())) {
+            plugin.messages().send(sender, "arenamode.busy");
+            return false;
+        }
+        if (plugin.kitEdits().isEditing(target.getUniqueId()) || plugin.arenaMode().isIn(target.getUniqueId())) {
             plugin.messages().send(sender, "duels.target-busy", "player", target.getName());
             return false;
         }
@@ -81,7 +96,8 @@ public final class DuelService {
         Kit kit = request.kit();
 
         plugin.requests().consume(request.senderId());
-        MatchManager.StartResult result = plugin.matches().start(sender, target, kit, request.settings(), DuelMode.FRIENDLY);
+        MatchManager.StartResult result = plugin.matches().start(sender, target, kit, request.settings(),
+                DuelMode.FRIENDLY, request.arena());
         switch (result) {
             case STARTED -> { /* Match sends its own messages */ }
             case PLAYER_BUSY -> {
@@ -91,6 +107,10 @@ public final class DuelService {
             case NO_ARENA -> {
                 plugin.messages().send(target, "arena.none-available");
                 plugin.messages().send(sender, "arena.none-available");
+            }
+            case ARENA_UNAVAILABLE -> {
+                plugin.messages().send(target, "arena.chosen-unavailable");
+                plugin.messages().send(sender, "arena.chosen-unavailable");
             }
             case FAILED -> {
                 plugin.messages().send(target, "duels.start-failed");

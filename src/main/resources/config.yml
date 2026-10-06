@@ -1,5 +1,9 @@
 # GrandDuels configuration
 
+# Language of messages and menus: en, ru, or the name of a folder you created in plugins/GrandDuels/lang/
+# (copy lang/en to lang/<name>, translate the files, set the name here, then /duels reload).
+language: en
+
 storage:
   # YAML or SQLITE (changing this requires a restart)
   type: YAML
@@ -48,3 +52,38 @@ rules:
   spear:
     max-damage: 0
     knockback-multiplier: 1.0
+
+# Player-made kits (/duel kit ...)
+player-kits:
+  # How many kits a player may own (permission grandduels.kits.unlimited removes the limit, 0 disables player kits)
+  max-per-player: 5
+  # Items that can never be saved into a player kit (in addition to a built-in list of dangerous items such as
+  # command blocks, spawners, barriers, written books and spawn eggs)
+  banned-materials: []
+  # /duel kit create|edit opens a RESTRICTED creative mode: the player cannot build, break, drop, hit, run commands
+  # or leave the area, and every item is validated when the kit is saved. Their real inventory comes back afterwards.
+  editor:
+    # false: /duel kit create <name> just copies the inventory the player carries
+    enabled: true
+    # The session is cancelled after this many seconds (0 = never)
+    timeout-seconds: 600
+    # Editors cannot move farther than this many blocks from where they started (0 = unlimited)
+    radius: 10.0
+    # An item whose serialized form is larger than this is rejected (0 = unlimited)
+    max-item-bytes: 4096
+
+# Arena mode (/arena): pick a kit, fight in a free-for-all, return to the lobby when you die.
+arena-mode:
+  enabled: true
+  # Set with /duels setarenaspawn. Players are teleported here; without it /arena is unavailable.
+  # spawn:
+  #   world: world
+  #   x: 0.5
+  #   y: 64.0
+  #   z: 0.5
+  #   yaw: 0.0
+  #   pitch: 0.0
+  # Players cannot move farther than this from the spawn (0 = unlimited)
+  radius: 60.0
+  # /arena leave is refused this many seconds after fighting another player
+  combat-tag-seconds: 10

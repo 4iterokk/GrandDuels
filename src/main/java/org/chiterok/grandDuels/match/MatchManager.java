@@ -17,7 +17,7 @@ import java.util.UUID;
 /** Registry of running duels and the entry point for starting them. Main thread only. */
 public final class MatchManager {
 
-    public enum StartResult { STARTED, PLAYER_BUSY, NO_ARENA, FAILED }
+    public enum StartResult { STARTED, PLAYER_BUSY, NO_ARENA, ARENA_UNAVAILABLE, FAILED }
 
     private final GrandDuels plugin;
     private final Map<UUID, Match> byPlayer = new HashMap<>();
@@ -60,13 +60,18 @@ public final class MatchManager {
     }
 
     public StartResult start(Player first, Player second, Kit kit, MatchSettings settings, DuelMode mode) {
-        if (isInMatch(first.getUniqueId()) || isInMatch(second.getUniqueId())
-                || plugin.kitEdits().isEditing(first.getUniqueId()) || plugin.kitEdits().isEditing(second.getUniqueId())) {
+        return start(first, second, kit, settings, mode, null);
+    }
+
+    /** @param arenaId the arena the players picked, or {@code null} for any free arena the kit may be played on */
+    public StartResult start(Player first, Player second, Kit kit, MatchSettings settings, DuelMode mode,
+                             @Nullable String arenaId) {
+        if (plugin.isOccupied(first.getUniqueId()) || plugin.isOccupied(second.getUniqueId())) {
             return StartResult.PLAYER_BUSY;
         }
 
-        Arena arena = plugin.arenas().acquireFree(plugin.settings().duel().boundaryPadding());
-        if (arena == null) return StartResult.NO_ARENA;
+        Arena arena = plugin.arenas().acquireFree(plugin.settings().duel().boundaryPadding(), kit, arenaId);
+        if (arena == null) return arenaId == null ? StartResult.NO_ARENA : StartResult.ARENA_UNAVAILABLE;
 
         Match match = new Match(plugin, this, arena, kit, settings, mode, first, second);
         byPlayer.put(first.getUniqueId(), match);
