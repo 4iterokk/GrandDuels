@@ -8,12 +8,15 @@ import org.chiterok.grandDuels.GrandDuels;
 import org.chiterok.grandDuels.command.CommandRegistry;
 import org.chiterok.grandDuels.command.SubCommand;
 import org.chiterok.grandDuels.config.Messages;
+import org.chiterok.grandDuels.config.Settings;
+import org.chiterok.grandDuels.data.KitRatingManager;
 import org.chiterok.grandDuels.data.PlayerStats;
 import org.chiterok.grandDuels.data.StatsManager;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
 /** {@code /duel stats [player]} - the lookup runs off the main thread. */
@@ -62,12 +65,18 @@ public final class Stats implements SubCommand {
         }
 
         final String displayName = name;
-        plugin.stats().lookup(uuid).thenAccept(result -> Bukkit.getScheduler().runTask(plugin, () -> {
+        // kit rating mode: the ELO shown here is the average over the kits the player is rated in
+        boolean kitMode = plugin.settings().matchmaking().ratingMode() == Settings.RatingMode.KIT;
+        CompletableFuture<Integer> kitElo = kitMode
+                ? plugin.kitRatings().lookup(uuid).thenApply(KitRatingManager::average)
+                : CompletableFuture.completedFuture(-1);
+        plugin.stats().lookup(uuid).thenAcceptBoth(kitElo, (result, averageElo) -> Bukkit.getScheduler().runTask(plugin, () -> {
             PlayerStats stats = result.orElseGet(() -> PlayerStats.empty(uuid, displayName));
+            int elo = kitMode ? averageElo : stats.elo();
             List<Component> lines = plugin.messages().lines("stats.lines", Messages.ph(
                     "player", displayName, "wins", stats.wins(), "losses", stats.losses(), "kills", stats.kills(),
                     "deaths", stats.deaths(), "kd", stats.kdFormatted(), "streak", stats.currentStreak(),
-                    "best_streak", stats.bestStreak(), "elo", stats.elo()));
+                    "best_streak", stats.bestStreak(), "elo", elo));
             for (Component line : lines) sender.sendMessage(line);
         }));
     }

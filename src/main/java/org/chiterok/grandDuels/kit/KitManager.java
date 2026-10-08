@@ -8,6 +8,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
 import org.chiterok.grandDuels.GrandDuels;
+import org.chiterok.grandDuels.config.Settings;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -101,9 +102,38 @@ public final class KitManager {
         for (Map<?, ?> effect : s.getMapList("effects")) effects.add(codec.parseEffect(effect));
 
         ItemStack icon = parseIcon(s, items, used);
-        return new Kit(id, s.getString("display-name", "&f" + id), icon, List.copyOf(s.getStringList("description")),
+        return new Kit(id, localizedName(s, "&f" + id), icon, List.copyOf(localizedLore(s)),
                 Map.copyOf(items), helmet, chestplate, leggings, boots, offhand, List.copyOf(effects),
                 Set.copyOf(used), owner);
+    }
+
+    // ---------------------------------------------------------------- localized texts
+
+    /**
+     * {@code display-name} is either a plain string (every language) or a section of strings keyed by language code.
+     * The active language is used, then English, then the first one listed.
+     */
+    private String localizedName(ConfigurationSection kit, String fallback) {
+        ConfigurationSection variants = kit.getConfigurationSection("display-name");
+        if (variants == null) return kit.getString("display-name", fallback);
+        String key = variantKey(variants);
+        return key == null ? fallback : variants.getString(key, fallback);
+    }
+
+    /** {@code description} is either a list (every language) or a section of lists keyed by language code. */
+    private List<String> localizedLore(ConfigurationSection kit) {
+        ConfigurationSection variants = kit.getConfigurationSection("description");
+        if (variants == null) return kit.getStringList("description");
+        String key = variantKey(variants);
+        return key == null ? List.of() : variants.getStringList(key);
+    }
+
+    private @Nullable String variantKey(ConfigurationSection variants) {
+        for (String candidate : List.of(plugin.settings().language(), Settings.DEFAULT_LANGUAGE)) {
+            if (variants.isSet(candidate)) return candidate;
+        }
+        for (String key : variants.getKeys(false)) return key;
+        return null;
     }
 
     private ItemStack decodeSection(ConfigurationSection parent, String key, String path, Set<String> used) {

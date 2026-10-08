@@ -1,6 +1,7 @@
 package org.chiterok.grandDuels.arena;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.util.BoundingBox;
@@ -55,6 +56,7 @@ public final class ArenaManager {
                 arena.setPos1(StoredLocation.read(section.getConfigurationSection("pos1")));
                 arena.setPos2(StoredLocation.read(section.getConfigurationSection("pos2")));
                 arena.setDisplayName(section.getString("display-name"));
+                arena.setDisplayMaterial(parseIcon(section.getString("icon")));
                 arenas.put(arena.name(), arena);
             }
         }
@@ -80,6 +82,7 @@ public final class ArenaManager {
             if (p1 != null) p1.write(section.createSection("pos1"));
             if (p2 != null) p2.write(section.createSection("pos2"));
             if (arena.hasCustomName()) section.set("display-name", arena.displayName());
+            if (arena.displayMaterial() != null) section.set("icon", arena.displayMaterial().name());
         }
         yaml.set("kit-arenas", null);
         for (Map.Entry<String, Set<String>> entry : kitArenas.entrySet()) {
@@ -131,6 +134,22 @@ public final class ArenaManager {
         arena.setDisplayName(displayName);
         save();
         return true;
+    }
+
+    /** Sets (or, with null, clears) the arena selector icon of an arena. @return false if it does not exist. */
+    public boolean setDisplayMaterial(String name, @Nullable Material material) {
+        Arena arena = get(name);
+        if (arena == null) return false;
+        arena.setDisplayMaterial(material);
+        save();
+        return true;
+    }
+
+    /** A usable menu icon: an existing, non-air item material; {@code null} for anything else. */
+    public static @Nullable Material parseIcon(@Nullable String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        Material material = Material.matchMaterial(raw.trim());
+        return material == null || material.isAir() || !material.isItem() ? null : material;
     }
 
     // ---------------------------------------------------------------- arenas per kit

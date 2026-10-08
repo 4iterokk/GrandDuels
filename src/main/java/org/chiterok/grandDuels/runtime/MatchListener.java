@@ -98,12 +98,14 @@ public final class MatchListener implements Listener {
         Match match = plugin.matches().of(player);
         if (match != null) match.handleQuit(player);
         plugin.stats().evict(player.getUniqueId());
+        plugin.kitRatings().evict(player.getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         plugin.stats().preload(player);
+        plugin.kitRatings().preload(player);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player.isOnline() && plugin.matches().recover(player)) {
                 plugin.messages().send(player, "duels.recovered");

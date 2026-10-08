@@ -29,6 +29,24 @@ duel:
   command-whitelist:
     - "duel cancel"
 
+matchmaking:
+  # ELO change per ranked duel (higher = faster rating swings)
+  k-factor: 32
+  # GLOBAL: every ranked duel moves one ELO per player (stats.yml / stats.db).
+  # KIT:    every standard kit has its own ELO per player (kit-ratings.yml / kit-ratings.db) and the queue of a kit
+  #         matches players by their rating in that kit. The global ELO stays as it is while this mode is active.
+  # %grandduels_elo%, %grandduels_elo_<player>% and %grandduels_elo_top_<pos>_*% follow this setting (in KIT mode they
+  # show the average over the kits a player is rated in); %grandduels_kit_elo_<kit>% and
+  # %grandduels_kit_elo_top_<kit>_<pos>_name|count% work in KIT mode only.
+  rating-mode: GLOBAL
+  ranked:
+    # allowed ELO difference when a player joins the queue
+    initial-elo-range: 100
+    # how much the allowed difference grows per second of waiting
+    elo-range-per-second: 5.0
+    # upper limit of the allowed difference (0 = unlimited)
+    max-elo-range: 800
+
 # Per-item consumption / usage cooldowns in seconds (0 disables)
 cooldowns:
   golden-apple: 30
@@ -67,10 +85,27 @@ player-kits:
     enabled: true
     # The session is cancelled after this many seconds (0 = never)
     timeout-seconds: 600
-    # Editors cannot move farther than this many blocks from where they started (0 = unlimited)
+    # Editors cannot move farther than this many blocks from where they started, or from the zone below (0 = unlimited)
     radius: 10.0
+    # Optional: teleport players who edit kits here (they are returned to where they were when the session ends).
+    # Without it (or when the world is not loaded) they edit where they stand.
+    # zone:
+    #   world: world
+    #   x: 0.5
+    #   y: 64.0
+    #   z: 0.5
+    #   yaw: 0.0
+    #   pitch: 0.0
     # An item whose serialized form is larger than this is rejected (0 = unlimited)
     max-item-bytes: 4096
+    # Crafting stations editors may use (to combine and enchant items). Everything else stays blocked.
+    # Available: WORKBENCH (crafting table), ANVIL, ENCHANTING, GRINDSTONE, SMITHING, STONECUTTER, LOOM, CARTOGRAPHY
+    allowed-inventories:
+      - WORKBENCH
+      - ANVIL
+      - ENCHANTING
+      - GRINDSTONE
+      - SMITHING
 
 # Arena mode (/arena): pick a kit, fight in a free-for-all, return to the lobby when you die.
 arena-mode:
@@ -87,3 +122,25 @@ arena-mode:
   radius: 60.0
   # /arena leave is refused this many seconds after fighting another player
   combat-tag-seconds: 10
+  # Combat rules of arena mode. By default arena mode uses the server defaults of lang/<language>/menu/player/cooldowns.yml
+  # (the same as duels). Set enabled: true to give arena mode its own rules, applied when a player joins the arena.
+  combat:
+    enabled: false
+    # false: no custom cooldowns at all (vanilla cooldowns only)
+    custom-cooldowns: true
+    # Seconds per item (0 = no cooldown); items you leave out keep their server default.
+    # Keys: golden-apple, enchanted-golden-apple, trident, wind-charge, ender-pearl, chorus-fruit, firework-rocket
+    cooldowns:
+      golden-apple: 30
+      enchanted-golden-apple: 30
+      trident: 5
+      wind-charge: 3
+      ender-pearl: 15
+      chorus-fruit: 10
+      firework-rocket: 0
+    # Banned items/abilities: golden-apple, enchanted-golden-apple, trident, wind-charge, ender-pearl, chorus-fruit,
+    # firework-rocket, elytra, riptide. Banned items are removed from the kit.
+    # Leave the list out to keep the server defaults; an empty list [] bans nothing.
+    banned:
+      - elytra
+      - riptide

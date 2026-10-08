@@ -1,54 +1,43 @@
 package org.chiterok.grandDuels.cooldown;
 
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.chiterok.grandDuels.GrandDuels;
 import org.chiterok.grandDuels.utils.TimeUtil;
 
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
- * Tracks per-player item cooldowns during duels.
- * <p>
- * Every cooldown is mirrored to the client with {@link Player#setCooldown(org.bukkit.Material, int)} so that the item
- * is greyed out and the server refuses to start using it. The expiry map here is the authority for messages and checks.
+ * Item cooldowns of duels and arena mode, backed entirely by the native item cooldown of the player
+ * ({@link Player#setCooldown(Material, int)}): the item is greyed out on the client and the server itself refuses to
+ * start using it (eating, throwing, ...). The remaining time is read back from the player, so there is no second
+ * source of truth that could go stale (e.g. after a death, a respawn or another plugin resetting the cooldown).
  * All access happens on the main thread.
  */
 public final class PvPCooldownManager {
 
+    private static final long TICK_MILLIS = 50L;
+
     private final GrandDuels plugin;
-    private final Map<UUID, Map<RuleType, Long>> expiries = new ConcurrentHashMap<>();
 
     public PvPCooldownManager(GrandDuels plugin) {
         this.plugin = plugin;
     }
 
     public long remainingMillis(Player player, RuleType type) {
-        Map<RuleType, Long> perPlayer = expiries.get(player.getUniqueId());
-        if (perPlayer == null) return 0L;
-        Long expiry = perPlayer.get(type);
-        if (expiry == null) return 0L;
-        long remaining = expiry - System.currentTimeMillis();
-        if (remaining <= 0) {
-            perPlayer.remove(type);
-            return 0L;
-        }
-        return remaining;
+        Material material = cooldownMaterial(type);
+        if (material == null) return 0L;
+        return Math.max(0, player.getCooldown(material)) * TICK_MILLIS;
     }
 
     public boolean isOnCooldown(Player player, RuleType type) {
-        return remainingMillis(player, type) > 0L;
+        Material material = cooldownMaterial(type);
+        return material != null && player.hasCooldown(material);
     }
 
     /** Starts a cooldown of {@code seconds} (the duel's rule for this item). 0 or less disables it. */
     public void apply(Player player, RuleType type, double seconds) {
-        if (seconds <= 0.0 || !type.hasCooldown() || type.material() == null) return;
-        long millis = (long) (seconds * 1000.0);
-        expiries.computeIfAbsent(player.getUniqueId(), id -> new EnumMap<>(RuleType.class))
-                .put(type, System.currentTimeMillis() + millis);
-        player.setCooldown(type.material(), (int) Math.ceil(seconds * 20.0));
+        Material material = cooldownMaterial(type);
+        if (seconds <= 0.0 || material == null) return;
+        player.setCooldown(material, Math.max(1, (int) Math.ceil(seconds * 20.0)));
     }
 
     public void notifyBlocked(Player player, RuleType type) {
@@ -56,12 +45,17 @@ public final class PvPCooldownManager {
                 "time", TimeUtil.seconds(remainingMillis(player, type)));
     }
 
-    /** Forgets all cooldowns of the player and clears the client-side item cooldowns. */
+    /** Clears the item cooldowns of every rule type (when a duel / arena session starts or ends). */
     public void clear(Player player) {
-        expiries.remove(player.getUniqueId());
         if (!player.isOnline()) return;
         for (RuleType type : RuleType.values()) {
-            if (type.hasCooldown() && type.material() != null) player.setCooldown(type.material(), 0);
+            Material material = cooldownMaterial(type);
+            if (material != null) player.setCooldown(material, 0);
         }
+    }
+
+    /** The item that carries the cooldown of {@code type}, or {@code null} for rules without a cooldown. */
+    private static Material cooldownMaterial(RuleType type) {
+        return type.hasCooldown() ? type.material() : null;
     }
 }

@@ -1,6 +1,7 @@
 package org.chiterok.grandDuels.arena;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.util.BoundingBox;
 import org.chiterok.grandDuels.utils.StoredLocation;
 import org.jetbrains.annotations.Nullable;
@@ -16,6 +17,7 @@ public final class Arena {
     private volatile StoredLocation pos1;
     private volatile StoredLocation pos2;
     private volatile String displayName;
+    private volatile Material displayMaterial;
     private volatile ArenaState state = ArenaState.WAITING;
     private volatile BoundingBox activeBounds;
 
@@ -40,6 +42,15 @@ public final class Arena {
 
     public void setDisplayName(@Nullable String displayName) {
         this.displayName = displayName == null || displayName.isBlank() ? null : displayName;
+    }
+
+    /** Item shown for this arena in the arena selector, or {@code null} for the menu's default icons. */
+    public @Nullable Material displayMaterial() {
+        return displayMaterial;
+    }
+
+    public void setDisplayMaterial(@Nullable Material material) {
+        this.displayMaterial = material;
     }
 
     public ArenaState state() {

@@ -31,6 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * One running 1v1 duel: countdown, fight, celebration and restoration.
@@ -296,7 +297,13 @@ public final class Match {
         Messages m = plugin.messages();
         if (winner != null && loser != null) {
             boolean ranked = mode == DuelMode.RANKED;
-            plugin.stats().recordResult(winner, loser, ranked).thenAccept(change -> {
+            // kit rating mode: ranked duels move the ELO of the duel's kit instead of the global ELO
+            boolean kitRated = ranked && kit.owner() == null
+                    && plugin.settings().matchmaking().ratingMode() == Settings.RatingMode.KIT;
+            CompletableFuture<Integer> statsResult = plugin.stats().recordResult(winner, loser, ranked && !kitRated);
+            CompletableFuture<Integer> ratingResult = kitRated
+                    ? plugin.kitRatings().recordResult(winner, loser, kit.id()) : statsResult;
+            ratingResult.thenAccept(change -> {
                 if (!ranked || change <= 0) return;
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (winner.isOnline()) plugin.messages().send(winner, "duels.elo-gain", "amount", change);

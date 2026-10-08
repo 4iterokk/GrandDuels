@@ -14,6 +14,7 @@ import org.chiterok.grandDuels.config.ConfigManager;
 import org.chiterok.grandDuels.config.Messages;
 import org.chiterok.grandDuels.config.Settings;
 import org.chiterok.grandDuels.cooldown.PvPCooldownManager;
+import org.chiterok.grandDuels.data.KitRatingManager;
 import org.chiterok.grandDuels.data.PreferenceManager;
 import org.chiterok.grandDuels.data.SnapshotRepository;
 import org.chiterok.grandDuels.data.StatsManager;
@@ -53,6 +54,7 @@ public final class GrandDuels extends JavaPlugin {
     private PvPCooldownManager cooldowns;
     private SnapshotRepository snapshots;
     private StatsManager stats;
+    private KitRatingManager kitRatings;
     private RequestManager requests;
     private MatchManager matches;
     private ArenaModeManager arenaMode;
@@ -73,6 +75,7 @@ public final class GrandDuels extends JavaPlugin {
         this.cooldowns = new PvPCooldownManager(this);
         this.snapshots = new SnapshotRepository(this);
         this.stats = new StatsManager(this);
+        this.kitRatings = new KitRatingManager(this);
         this.requests = new RequestManager(this);
         this.matches = new MatchManager(this);
         this.arenaMode = new ArenaModeManager(this);
@@ -82,6 +85,7 @@ public final class GrandDuels extends JavaPlugin {
         kits.reload();
         preferences.load();
         stats.start();
+        kitRatings.start();
         queues.start();
 
         registerListeners(new GuiListener(), new PvPRulesListener(this), new CombatRestrictionListener(this),
@@ -98,6 +102,7 @@ public final class GrandDuels extends JavaPlugin {
         // /reload or late enable: players are already online
         for (Player online : Bukkit.getOnlinePlayers()) {
             stats.preload(online);
+            kitRatings.preload(online);
             if (matches.recover(online)) messages.send(online, "duels.recovered");
         }
         getLogger().info("GrandDuels enabled.");
@@ -113,6 +118,7 @@ public final class GrandDuels extends JavaPlugin {
         if (preferences != null) preferences.saveNow();
         if (requests != null) requests.clear();
         if (stats != null) stats.stop();
+        if (kitRatings != null) kitRatings.stop();
     }
 
     /** Registers the %grandduels_...% placeholders when PlaceholderAPI is installed (it is a soft dependency). */
@@ -215,6 +221,10 @@ public final class GrandDuels extends JavaPlugin {
 
     public StatsManager stats() {
         return stats;
+    }
+
+    public KitRatingManager kitRatings() {
+        return kitRatings;
     }
 
     public RequestManager requests() {

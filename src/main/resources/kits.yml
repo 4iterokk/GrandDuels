@@ -9,6 +9,12 @@
 #   components (Paper DataComponentTypes): max-stack-size, max-damage,
 #       food {nutrition, saturation, can-always-eat}, consumable {consume-seconds}
 #
+# display-name and description may be given per language, keyed by the language code of config.yml (the active
+# language is used, then en, then the first one listed):
+#   description:
+#     en: [ "&7Classic potion PvP." ]
+#     ru: [ "&7Классический PvP с зельями." ]
+#
 # Slots: items 0-8 hotbar, 9-35 inventory. armor: helmet/chestplate/leggings/boots. offhand: single item.
 # Status effects: effects: [{type: speed, duration: 999999, amplifier: 0}]  (duration -1 = infinite)
 
@@ -17,8 +23,12 @@ kits:
     display-name: "&#ff5555&lNoDebuff"
     icon: SPLASH_POTION
     description:
-      - "&7Classic potion PvP."
-      - "&7Diamond gear, pearls and healing."
+      en:
+        - "&7Classic potion PvP."
+        - "&7Diamond gear, pearls and healing."
+      ru:
+        - "&7Классический PvP с зельями."
+        - "&7Алмазная броня, эндер-жемчуг и лечение."
     effects:
       - { type: speed, duration: -1, amplifier: 0 }
     armor:
