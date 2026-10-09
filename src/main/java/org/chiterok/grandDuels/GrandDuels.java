@@ -87,6 +87,7 @@ public final class GrandDuels extends JavaPlugin {
         stats.start();
         kitRatings.start();
         queues.start();
+        arenaMode.start();
 
         registerListeners(new GuiListener(), new PvPRulesListener(this), new CombatRestrictionListener(this),
                 new ArenaProtectionListener(this), new MatchListener(this), new KitEditorListener(this),

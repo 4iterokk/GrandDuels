@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.logging.Level;
 
+import org.chiterok.grandDuels.utils.FileUpdater;
 import org.jetbrains.annotations.Nullable;
 
 /** Thin wrapper around a YAML file in the plugin data folder. */
@@ -99,14 +100,7 @@ public final class YamlFile {
             YamlConfiguration defaults = readDefaults();
             if (defaults != null) {
                 loaded.setDefaults(defaults);
-                if (mergeMissing(loaded, defaults)) {
-                    try {
-                        loaded.save(file);
-                        plugin.getLogger().info("Added missing default keys to " + name);
-                    } catch (IOException e) {
-                        plugin.getLogger().log(Level.WARNING, "Could not update " + name, e);
-                    }
-                }
+                FileUpdater.update(file, loaded, defaults, plugin.getLogger());
             }
         }
         this.yaml = loaded;
@@ -122,22 +116,6 @@ public final class YamlFile {
             plugin.getLogger().log(Level.WARNING, "Could not read default " + name, e);
             return null;
         }
-    }
-
-    /**
-     * Copies every default key that is absent from the file on disk (new keys introduced by a plugin update), so
-     * that admins can see and edit them. Existing values - including lists - are never overwritten.
-     */
-    private static boolean mergeMissing(YamlConfiguration loaded, YamlConfiguration defaults) {
-        boolean changed = false;
-        for (String key : defaults.getKeys(true)) {
-            if (defaults.isConfigurationSection(key)) continue;
-            if (!loaded.isSet(key)) {
-                loaded.set(key, defaults.get(key));
-                changed = true;
-            }
-        }
-        return changed;
     }
 
     public YamlConfiguration get() {

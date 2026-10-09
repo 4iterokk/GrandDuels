@@ -125,7 +125,9 @@ arena-mode:
   # Combat rules of arena mode. By default arena mode uses the server defaults of lang/<language>/menu/player/cooldowns.yml
   # (the same as duels). Set enabled: true to give arena mode its own rules, applied when a player joins the arena.
   combat:
-    enabled: false
+    # true: the cooldowns / bans below apply (without it the server defaults of the cooldowns menu file apply, which
+    # have no cooldowns). NOTE: the old top-level "cooldowns:" section is not used by the plugin.
+    enabled: true
     # false: no custom cooldowns at all (vanilla cooldowns only)
     custom-cooldowns: true
     # Seconds per item (0 = no cooldown); items you leave out keep their server default.
@@ -144,3 +146,12 @@ arena-mode:
     banned:
       - elytra
       - riptide
+    # Boss bar shown to arena players while they are combat tagged (texts: arenamode.bossbar-* in messages.yml)
+    bossbar:
+      enabled: true
+      # BLUE, GREEN, PINK, PURPLE, RED, WHITE, YELLOW
+      color: RED
+      # PROGRESS, NOTCHED_6, NOTCHED_10, NOTCHED_12, NOTCHED_20
+      style: PROGRESS
+      # true: the bar stays visible (full, with the "safe" text) when the combat tag has expired
+      show-when-safe: false

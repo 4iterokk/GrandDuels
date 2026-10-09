@@ -40,6 +40,17 @@ public final class PvPCooldownManager {
         player.setCooldown(material, Math.max(1, (int) Math.ceil(seconds * 20.0)));
     }
 
+    /**
+     * Same as {@link #apply} one tick later. Items with a vanilla {@code use_cooldown} (ender pearl, wind charge, ...)
+     * get their short vanilla cooldown after the launch/consume event has run, which would overwrite a cooldown set
+     * inside the event. Applying it on the next tick makes the configured duration win.
+     */
+    public void applyNextTick(Player player, RuleType type, double seconds) {
+        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+            if (player.isOnline()) apply(player, type, seconds);
+        });
+    }
+
     public void notifyBlocked(Player player, RuleType type) {
         plugin.messages().actionBar(player, type.messagePath(),
                 "time", TimeUtil.seconds(remainingMillis(player, type)));

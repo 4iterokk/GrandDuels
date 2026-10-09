@@ -90,7 +90,7 @@ public final class PvPRulesListener implements Listener {
             plugin.cooldowns().notifyBlocked(player, type);
             return;
         }
-        plugin.cooldowns().apply(player, type, rules.cooldownSeconds(type));
+        plugin.cooldowns().applyNextTick(player, type, rules.cooldownSeconds(type));
     }
 
     /**

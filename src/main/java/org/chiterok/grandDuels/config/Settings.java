@@ -1,5 +1,6 @@
 package org.chiterok.grandDuels.config;
 
+import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -83,6 +84,18 @@ public record Settings(String language, StorageType storageType, DuelSettings du
      * @param combatTagSeconds {@code /arena leave} is refused this long after taking or dealing player damage
      * @param combat           item cooldowns / bans of arena mode (see {@link ArenaCombatSettings})
      */
+    /**
+     * Boss bar shown to arena players ({@code arena-mode.combat.bossbar}); the texts are in messages.yml.
+     *
+     * @param showWhenSafe also show the bar (full, with the "safe" text) while the player is not combat tagged
+     */
+    public record CombatBarSettings(boolean enabled, BossBar.Color color, BossBar.Overlay overlay,
+                                    boolean showWhenSafe) {
+
+        public static final CombatBarSettings DEFAULT = new CombatBarSettings(true, BossBar.Color.RED,
+                BossBar.Overlay.PROGRESS, false);
+    }
+
     public record ArenaModeSettings(boolean enabled, @Nullable StoredLocation spawn, double radius,
                                     int combatTagSeconds, ArenaCombatSettings combat) {}
 
@@ -95,9 +108,10 @@ public record Settings(String language, StorageType storageType, DuelSettings du
      * @param banned          banned items/abilities; {@code null} = keep the server default list
      */
     public record ArenaCombatSettings(boolean enabled, boolean customCooldowns, Map<RuleType, Double> cooldowns,
-                                      @Nullable Set<RuleType> banned) {
+                                      @Nullable Set<RuleType> banned, CombatBarSettings bar) {
 
-        public static final ArenaCombatSettings DISABLED = new ArenaCombatSettings(false, true, Map.of(), null);
+        public static final ArenaCombatSettings DISABLED = new ArenaCombatSettings(false, true, Map.of(), null,
+                CombatBarSettings.DEFAULT);
 
         public ArenaCombatSettings {
             cooldowns = Map.copyOf(cooldowns);
@@ -198,8 +212,16 @@ public record Settings(String language, StorageType storageType, DuelSettings du
                 if (type != null) banned.add(type);
             }
         }
+        CombatBarSettings bar = CombatBarSettings.DEFAULT;
+        ConfigurationSection barSection = s.getConfigurationSection("bossbar");
+        if (barSection != null) {
+            bar = new CombatBarSettings(barSection.getBoolean("enabled", true),
+                    parseEnum(BossBar.Color.class, barSection.getString("color"), BossBar.Color.RED),
+                    parseEnum(BossBar.Overlay.class, barSection.getString("style"), BossBar.Overlay.PROGRESS),
+                    barSection.getBoolean("show-when-safe", false));
+        }
         return new ArenaCombatSettings(s.getBoolean("enabled", false), s.getBoolean("custom-cooldowns", true),
-                cooldowns, banned);
+                cooldowns, banned, bar);
     }
 
     private static WeaponRule weaponRule(@Nullable ConfigurationSection s) {
