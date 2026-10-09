@@ -9,7 +9,6 @@ import org.chiterok.grandDuels.command.CommandRegistry;
 import org.chiterok.grandDuels.command.SubCommand;
 import org.chiterok.grandDuels.config.Messages;
 import org.chiterok.grandDuels.config.Settings;
-import org.chiterok.grandDuels.data.KitRatingManager;
 import org.chiterok.grandDuels.data.PlayerStats;
 import org.chiterok.grandDuels.data.StatsManager;
 
@@ -68,7 +67,7 @@ public final class Stats implements SubCommand {
         // kit rating mode: the ELO shown here is the average over the kits the player is rated in
         boolean kitMode = plugin.settings().matchmaking().ratingMode() == Settings.RatingMode.KIT;
         CompletableFuture<Integer> kitElo = kitMode
-                ? plugin.kitRatings().lookup(uuid).thenApply(KitRatingManager::average)
+                ? plugin.kitRatings().lookup(uuid).thenApply(plugin.kitRatings()::average)
                 : CompletableFuture.completedFuture(-1);
         plugin.stats().lookup(uuid).thenAcceptBoth(kitElo, (result, averageElo) -> Bukkit.getScheduler().runTask(plugin, () -> {
             PlayerStats stats = result.orElseGet(() -> PlayerStats.empty(uuid, displayName));

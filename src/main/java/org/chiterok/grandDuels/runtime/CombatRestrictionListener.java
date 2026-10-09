@@ -5,7 +5,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.Event;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.EntityShootBowEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
@@ -88,12 +95,53 @@ public final class CombatRestrictionListener implements Listener {
         }
     }
 
+    // ---------------------------------------------------------------- countdown: nothing may be used yet
+
+    private boolean inCountdown(Player player) {
+        Match match = plugin.matches().of(player);
+        return match != null && match.isFrozen();
+    }
+
+    /** Items and blocks cannot be used during the countdown (food, pearls, bows, potions, placing, ...). */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onCountdownInteract(PlayerInteractEvent event) {
+        if (!inCountdown(event.getPlayer())) return;
+        event.setUseItemInHand(Event.Result.DENY);
+        event.setUseInteractedBlock(Event.Result.DENY);
+        event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onCountdownConsume(PlayerItemConsumeEvent event) {
+        if (inCountdown(event.getPlayer())) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onCountdownShoot(EntityShootBowEvent event) {
+        if (event.getEntity() instanceof Player player && inCountdown(player)) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onCountdownLaunch(ProjectileLaunchEvent event) {
+        if (event.getEntity().getShooter() instanceof Player player && inCountdown(player)) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onCountdownSwap(PlayerSwapHandItemsEvent event) {
+        if (inCountdown(event.getPlayer())) event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onCountdownInventory(InventoryClickEvent event) {
+        if (event.getWhoClicked() instanceof Player player && inCountdown(player)) event.setCancelled(true);
+    }
+
     /** Blocks pearls/chorus fruit that would land outside the arena boundary. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onTeleport(PlayerTeleportEvent event) {
         PlayerTeleportEvent.TeleportCause cause = event.getCause();
         if (cause != PlayerTeleportEvent.TeleportCause.ENDER_PEARL
-                && cause != PlayerTeleportEvent.TeleportCause.CHORUS_FRUIT) return;
+                && cause != PlayerTeleportEvent.TeleportCause.CONSUMABLE_EFFECT) return;
         Player player = event.getPlayer();
         Match match = plugin.matches().of(player);
         if (match == null || isInside(match, event.getTo())) return;

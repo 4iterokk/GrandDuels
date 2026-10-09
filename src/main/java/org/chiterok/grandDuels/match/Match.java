@@ -151,8 +151,8 @@ public final class Match {
             snapshots.put(p.getUniqueId(), snapshot);
         }
 
-        prepare(first, spawn1, spawn2);
-        prepare(second, spawn2, spawn1);
+        Location destination1 = prepare(first, spawn1, spawn2);
+        Location destination2 = prepare(second, spawn2, spawn1);
         scoreboard.update(placeholders());
 
         for (Player p : List.of(first, second)) {
@@ -160,11 +160,33 @@ public final class Match {
             plugin.messages().send(p, "duels.starting", "opponent", other.getName(), "arena", arena.displayName(),
                     "kit", kit.displayName());
         }
-        startCountdown();
+        teleportThenCountdown(first, destination1, second, destination2);
         return true;
     }
 
-    private void prepare(Player player, Location spawn, Location lookAt) {
+    /**
+     * Moves both players with an async teleport (the arena chunks are loaded off the main thread and the client gets
+     * a normal world transfer) and starts the countdown only once both have arrived. A synchronous teleport into
+     * unloaded chunks, right after the queue menu closed, could leave clients on "Loading terrain...".
+     */
+    private void teleportThenCountdown(Player first, Location destination1, Player second, Location destination2) {
+        CompletableFuture<Boolean> arrival1 = first.teleportAsync(destination1);
+        CompletableFuture<Boolean> arrival2 = second.teleportAsync(destination2);
+        CompletableFuture.allOf(arrival1, arrival2).whenComplete((ignored, error) ->
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (phase != Phase.COUNTDOWN) return; // ended (quit, forced end) while teleporting
+                    retryIfFailed(first, destination1, arrival1);
+                    retryIfFailed(second, destination2, arrival2);
+                    startCountdown();
+                }));
+    }
+
+    private static void retryIfFailed(Player player, Location destination, CompletableFuture<Boolean> arrival) {
+        boolean arrived = !arrival.isCompletedExceptionally() && arrival.getNow(false);
+        if (!arrived && player.isOnline()) player.teleport(destination);
+    }
+
+    private Location prepare(Player player, Location spawn, Location lookAt) {
         player.closeInventory();
         player.setGameMode(GameMode.SURVIVAL);
         player.setAllowFlight(false);
@@ -181,8 +203,8 @@ public final class Match {
 
         Location destination = spawn.clone();
         destination.setDirection(lookAt.toVector().subtract(spawn.toVector()));
-        player.teleport(destination);
         scoreboard.show(player);
+        return destination;
     }
 
     private void startCountdown() {

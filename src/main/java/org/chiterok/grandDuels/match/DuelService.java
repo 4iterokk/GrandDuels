@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.chiterok.grandDuels.GrandDuels;
 import org.chiterok.grandDuels.arena.Arena;
+import org.chiterok.grandDuels.arena.ArenaState;
 import org.chiterok.grandDuels.gui.KitSelectorGUI;
 import org.chiterok.grandDuels.kit.Kit;
 import org.jetbrains.annotations.Nullable;
@@ -46,6 +47,11 @@ public final class DuelService {
             Arena chosen = plugin.arenas().get(arena);
             if (chosen == null || !chosen.isComplete() || !plugin.arenas().isAllowed(kit, chosen)) {
                 plugin.messages().send(sender, "arena.not-allowed", "arena", arena);
+                return;
+            }
+            // the menu may have been opened a while ago: the picked arena must be free right now
+            if (chosen.state() != ArenaState.WAITING) {
+                plugin.messages().send(sender, "arena.chosen-unavailable");
                 return;
             }
         }
