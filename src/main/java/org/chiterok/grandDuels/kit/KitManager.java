@@ -9,6 +9,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
 import org.chiterok.grandDuels.GrandDuels;
 import org.chiterok.grandDuels.config.Settings;
+import org.chiterok.grandDuels.match.DuelMode;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -68,6 +69,15 @@ public final class KitManager {
         return List.copyOf(kits.values());
     }
 
+    /** Standard kits that may currently be chosen in the queue of {@code mode}. */
+    public List<Kit> queueKits(DuelMode mode) {
+        List<Kit> list = new ArrayList<>();
+        for (Kit kit : kits.values()) {
+            if (kit.isEnabledFor(mode)) list.add(kit);
+        }
+        return list;
+    }
+
     public List<String> ids() {
         return new ArrayList<>(kits.keySet());
     }
@@ -104,7 +114,8 @@ public final class KitManager {
         ItemStack icon = parseIcon(s, items, used);
         return new Kit(id, localizedName(s, "&f" + id), icon, List.copyOf(localizedLore(s)),
                 Map.copyOf(items), helmet, chestplate, leggings, boots, offhand, List.copyOf(effects),
-                Set.copyOf(used), owner);
+                Set.copyOf(used), s.getBoolean("ranked", true),
+                s.getBoolean("unranked", true), owner);
     }
 
     // ---------------------------------------------------------------- localized texts

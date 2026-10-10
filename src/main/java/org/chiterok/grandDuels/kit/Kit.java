@@ -8,6 +8,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
 import org.chiterok.grandDuels.cooldown.RuleType;
+import org.chiterok.grandDuels.match.DuelMode;
 import org.chiterok.grandDuels.match.MatchSettings;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,14 +21,26 @@ import java.util.UUID;
 
 /**
  * Immutable kit definition. {@code components} lists the Paper data components that were customized in kits.yml
- * and is only used for GUI indicators.
+ * and is only used for GUI indicators. {@code ranked} / {@code unranked} ({@code ranked:} and {@code unranked:} in
+ * kits.yml, default true) control whether the kit can be chosen in that queue; setting one to false takes the kit out
+ * of it temporarily.
  */
 public record Kit(String id, String displayName, ItemStack icon, List<String> description,
                   Map<Integer, ItemStack> items,
                   @Nullable ItemStack helmet, @Nullable ItemStack chestplate,
                   @Nullable ItemStack leggings, @Nullable ItemStack boots, @Nullable ItemStack offhand,
-                  List<PotionEffect> effects, Set<String> components,
-                  @Nullable UUID owner) {
+                  List<PotionEffect> effects, Set<String> components, boolean ranked,
+                  boolean unranked, @Nullable UUID owner) {
+
+    /** Whether the kit may be chosen in the queue of {@code mode} (friendly duels are never restricted). */
+    public boolean isEnabledFor(DuelMode mode) {
+        return switch (mode) {
+            case RANKED -> ranked;
+            case UNRANKED -> unranked;
+            default -> true;
+        };
+    }
+
 
     /** Replaces the player's inventory, effects, health and food with this kit. */
     public void apply(Player player, MatchSettings settings) {

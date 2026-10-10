@@ -34,6 +34,11 @@ public abstract class GuiHolder implements InventoryHolder {
         return inventory;
     }
 
+    /** For GUIs that build their inventory themselves instead of from a menu definition. */
+    protected final void setInventory(Inventory inventory) {
+        this.inventory = inventory;
+    }
+
     @Override
     public final Inventory getInventory() {
         return inventory;

@@ -131,6 +131,10 @@ public final class KitSelectorGUI extends GuiHolder {
     @Override
     public void onClick(int slot, ClickType click) {
         Kit kit = kitBySlot.get(slot);
+        if (kit != null && click.isRightClick()) {
+            new KitPreviewGUI(plugin, viewer, kit, this::open).open();
+            return;
+        }
         if (kit != null) {
             Player target = plugin.getServer().getPlayer(targetId);
             if (target == null) {

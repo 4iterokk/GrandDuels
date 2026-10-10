@@ -9,6 +9,12 @@
 #   components (Paper DataComponentTypes): max-stack-size, max-damage,
 #       food {nutrition, saturation, can-always-eat}, consumable {consume-seconds}
 #
+# ranked: / unranked: (true or false, default true) choose in which queue the kit can be picked. A kit set to false
+# is hidden from that queue's menu and players waiting for it are removed - handy to disable a kit temporarily
+# without deleting it. Friendly duels and arena mode are not affected.
+#   ranked: false     -> not available in Ranked
+#   unranked: false   -> not available in Unranked
+#
 # display-name and description may be given per language, keyed by the language code of config.yml (the active
 # language is used, then en, then the first one listed):
 #   description:
@@ -22,6 +28,8 @@ kits:
   nodebuff:
     display-name: "&#ff5555&lNoDebuff"
     icon: SPLASH_POTION
+    ranked: true
+    unranked: true
     description:
       en:
         - "&7Classic potion PvP."
